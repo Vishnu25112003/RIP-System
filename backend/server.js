@@ -20,8 +20,10 @@ app.use(express.json());
 
 // Routes
 const userVerificationRoutes = require("./routes/userVerificationRoutes");
+const internshipRoutes = require("./routes/internshipManagementRoutes");
 
 app.use("/api/userverification", userVerificationRoutes);
+app.use("/api/internships", internshipRoutes);
 
 // Test route
 app.get("/", (req, res) => {
