@@ -1,11 +1,15 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../controllers/internshipManagementController");
+const upload = require("../middleware/uploadMiddleware");
 
-router.post("/", controller.createInternship);
-router.get("/", controller.getInternships);
-router.get("/:id", controller.getInternshipById);
-router.put("/:id", controller.updateInternship);
-router.delete("/:id", controller.deleteInternship);
+const {
+  createInternship,
+  getAllInternships,
+  updateInternship,
+} = require("../controllers/internshipManagementController");
+
+router.post("/", upload.single("image"), createInternship);
+router.get("/", getAllInternships);
+router.put("/:id", upload.single("image"), updateInternship);
 
 module.exports = router;

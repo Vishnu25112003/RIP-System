@@ -1,53 +1,60 @@
 const Internship = require("../models/internshipManagementModel");
 
-// Create internship
 exports.createInternship = async (req, res) => {
   try {
-    const internship = new Internship(req.body);
+    const { coursename, field, description, duration, status } = req.body;
+    const tasks = req.body.tasks ? JSON.parse(req.body.tasks) : [];
+
+    const internship = new Internship({
+      coursename,
+      field,
+      description,
+      duration,
+      status,
+      image: req.file ? req.file.filename : null,
+      dailyTasks: tasks,
+    });
+
     await internship.save();
-    res.status(201).json({ message: "Internship created", internship });
-  } catch (err) {
-    res.status(500).json({ message: "Error creating internship", error: err });
+    res.status(201).json(internship);
+  } catch (error) {
+    console.error("❌ BACKEND ERROR:", error.message);
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Get all internships
-exports.getInternships = async (req, res) => {
+exports.getAllInternships = async (req, res) => {
   try {
-    const internships = await Internship.find();
-    res.status(200).json(internships);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching internships" });
+    const internships = await Internship.find().sort({ createdAt: -1 });
+    res.json(internships);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching internships" });
   }
 };
 
-// Get single internship
-exports.getInternshipById = async (req, res) => {
-  try {
-    const internship = await Internship.findById(req.params.id);
-    if (!internship) return res.status(404).json({ message: "Not found" });
-    res.status(200).json(internship);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching internship" });
-  }
-};
-
-// Update internship
 exports.updateInternship = async (req, res) => {
   try {
-    const internship = await Internship.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.status(200).json({ message: "Updated", internship });
-  } catch (err) {
-    res.status(500).json({ message: "Error updating" });
-  }
-};
+    const { id } = req.params;
+    const { coursename, field, description, duration, status } = req.body;
+    const tasks = req.body.tasks ? JSON.parse(req.body.tasks) : [];
 
-// Delete internship
-exports.deleteInternship = async (req, res) => {
-  try {
-    await Internship.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Deleted" });
-  } catch (err) {
-    res.status(500).json({ message: "Error deleting" });
+    const updateData = {
+      coursename,
+      field,
+      description,
+      duration,
+      status,
+      dailyTasks: tasks,
+    };
+
+    if (req.file) {
+      updateData.image = req.file.filename;
+    }
+
+    const updated = await Internship.findByIdAndUpdate(id, updateData, { new: true });
+    res.json(updated);
+  } catch (error) {
+    console.error("Update Error:", error.message);
+    res.status(500).json({ error: "Error updating internship" });
   }
 };
