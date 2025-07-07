@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Sidebar } from "./components/Sidebar";
-import Navbar from "./components/Navbar"; // ✅ Import the Navbar
+import { Sidebar } from "./components/admin/Components/Sidebar";
+import Navbar from "./components/admin/Components/Navbar"; // ✅ Import the Navbar
 import { Route, Routes } from "react-router-dom";
 
-import Dashboard from "./pages/Dashboard";
-import UserVerification from "./pages/UserVerification";
-import InternshipManager from "./pages/InternshipManager";
-import ActivityMonitor from "./pages/ActivityMonitor";
-import CertificateManager from "./pages/CertificateManager";
-import Settings from "./pages/Settings";
+import Dashboard from "./components/admin/pages/Dashboard";
+import UserVerification from "./components/admin/pages/UserVerification";
+import InternshipManager from "./components/admin/pages/InternshipManager";
+import ActivityMonitor from "./components/admin/pages/ActivityMonitor";
+import CertificateManager from "./components/admin/pages/CertificateManager";
+import Settings from "./components/admin/pages/Settings";
 
 function App() {
   const [collapsed, setCollapsed] = useState(false);
