@@ -7,16 +7,8 @@ import {
   FiFile,
   FiCheckCircle,
   FiFileText,
-} from "react-icons/fi";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+} from "react-icons/fi"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 const stats = [
   {
@@ -44,32 +36,32 @@ const stats = [
     value: 214,
     icon: <FiAward className="text-3xl text-neonpink" />,
   },
-];
+]
 
 const users = [
   { name: "Vishnu M", email: "vishnu@example.com", status: "Verified" },
   { name: "Krithi R", email: "krithi@example.com", status: "Pending" },
   { name: "Deepak K", email: "deepak@example.com", status: "Verified" },
   { name: "Sara V", email: "sara@example.com", status: "Pending" },
-];
+]
 
 const quickActions = [
   {
     label: "Create Internship",
     icon: <FiFile className="text-3xl text-neonpink" />,
-    path: "/internships",
+    path: "/admin/internships",
   },
   {
     label: "Verify Users",
     icon: <FiCheckCircle className="text-3xl text-neonpink" />,
-    path: "/users",
+    path: "/admin/users",
   },
   {
     label: "View Reports",
     icon: <FiFileText className="text-3xl text-neonpink" />,
-    path: "/activities",
+    path: "/admin/activities",
   },
-];
+]
 
 const activityData = [
   { date: "Mon", activity: 20 },
@@ -79,7 +71,7 @@ const activityData = [
   { date: "Fri", activity: 40 },
   { date: "Sat", activity: 60 },
   { date: "Sun", activity: 45 },
-];
+]
 
 const Dashboard = () => {
   return (
@@ -87,10 +79,7 @@ const Dashboard = () => {
       {/* Stats Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
         {stats.map((stat, index) => (
-          <div
-            key={index}
-            className="bg-cardbg p-6 rounded-lg shadow hover:shadow-lg transition"
-          >
+          <div key={index} className="bg-cardbg p-6 rounded-lg shadow hover:shadow-lg transition">
             <div className="flex items-center gap-4">
               <div>{stat.icon}</div>
               <div>
@@ -130,17 +119,10 @@ const Dashboard = () => {
           </thead>
           <tbody>
             {users.map((user, idx) => (
-              <tr
-                key={idx}
-                className="border-b border-gray-800 hover:bg-gray-800 transition"
-              >
+              <tr key={idx} className="border-b border-gray-800 hover:bg-gray-800 transition">
                 <td className="py-2">{user.name}</td>
                 <td className="py-2">{user.email}</td>
-                <td
-                  className={`py-2 font-medium ${
-                    user.status === "Verified" ? "text-green-400" : "text-yellow-400"
-                  }`}
-                >
+                <td className={`py-2 font-medium ${user.status === "Verified" ? "text-green-400" : "text-yellow-400"}`}>
                   {user.status}
                 </td>
               </tr>
@@ -166,7 +148,7 @@ const Dashboard = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard

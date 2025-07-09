@@ -1,33 +1,26 @@
-import { Link, useLocation } from "react-router-dom";
-import {
-  FiMenu,
-  FiHome,
-  FiUserCheck,
-  FiBookOpen,
-  FiClipboard,
-  FiActivity,
-  FiAward,
-  FiSettings,
-} from "react-icons/fi";
+"use client"
+
+import { Link, useLocation } from "react-router-dom"
+import { FiMenu, FiHome, FiUserCheck, FiBookOpen, FiClipboard, FiActivity, FiAward, FiSettings } from "react-icons/fi"
 
 interface SidebarProps {
-  collapsed: boolean;
-  setCollapsed: (value: boolean) => void;
+  collapsed: boolean
+  setCollapsed: (value: boolean) => void
 }
 
 const topNavItems = [
-  { name: "Dashboard", path: "/", icon: <FiHome /> },
-  { name: "UserVerification", path: "/users", icon: <FiUserCheck /> },
-    { name: "CourseAccepter", path: "/courses", icon: <FiClipboard /> },
-  { name: "Internships", path: "/internships", icon: <FiBookOpen /> },
-  { name: "MonitorActivities", path: "/activities", icon: <FiActivity /> },
-  { name: "Certificates", path: "/certificates", icon: <FiAward /> },
-];
+  { name: "Dashboard", path: "/admin/dashboard", icon: <FiHome /> },
+  { name: "UserVerification", path: "/admin/users", icon: <FiUserCheck /> },
+  { name: "CourseAccepter", path: "/admin/courses", icon: <FiClipboard /> },
+  { name: "Internships", path: "/admin/internships", icon: <FiBookOpen /> },
+  { name: "MonitorActivities", path: "/admin/activities", icon: <FiActivity /> },
+  { name: "Certificates", path: "/admin/certificates", icon: <FiAward /> },
+]
 
-const settingsItem = { name: "Settings", path: "/settings", icon: <FiSettings /> };
+const settingsItem = { name: "Settings", path: "/admin/settings", icon: <FiSettings /> }
 
 export const Sidebar = ({ collapsed, setCollapsed }: SidebarProps) => {
-  const location = useLocation();
+  const location = useLocation()
 
   return (
     <div
@@ -46,7 +39,7 @@ export const Sidebar = ({ collapsed, setCollapsed }: SidebarProps) => {
 
         <nav className="mt-4 flex flex-col gap-2 px-2">
           {topNavItems.map((item, idx) => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path
             return (
               <Link
                 key={idx}
@@ -59,14 +52,14 @@ export const Sidebar = ({ collapsed, setCollapsed }: SidebarProps) => {
                 <span className="text-xl">{item.icon}</span>
                 {!collapsed && <span>{item.name}</span>}
               </Link>
-            );
+            )
           })}
         </nav>
       </div>
 
       {/* Bottom Section */}
       <div className="px-2 mb-4">
-        <hr className="border-gray-600 pb-1.5"/>
+        <hr className="border-gray-600 pb-1.5" />
         <Link
           to={settingsItem.path}
           className={`flex items-center gap-3 p-3 rounded hover:bg-gray-800 transition ${
@@ -79,5 +72,5 @@ export const Sidebar = ({ collapsed, setCollapsed }: SidebarProps) => {
         </Link>
       </div>
     </div>
-  );
-};
+  )
+}

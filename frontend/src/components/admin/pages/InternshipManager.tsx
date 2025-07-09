@@ -1,31 +1,27 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import {
-  FaBriefcase,
-  FaClipboardList,
-  FaBookOpen,
-  FaTasks,
-  FaRegEye,
-  FaPencilAlt,
-} from "react-icons/fa";
+"use client"
+
+import type React from "react"
+import { useEffect, useState } from "react"
+import axios from "axios"
+import { FaBriefcase, FaClipboardList, FaBookOpen, FaTasks, FaRegEye, FaPencilAlt } from "react-icons/fa"
 
 interface Task {
-  day?: number;
-  title: string;
-  description: string;
-  exercise?: string;
-  test?: string;
+  day?: number
+  title: string
+  description: string
+  exercise?: string
+  test?: string
 }
 
 interface Internship {
-  _id: string;
-  coursename: string;
-  field: string;
-  description: string;
-  duration: string;
-  status: "Active" | "Inactive";
-  image?: string;
-  dailyTasks: Task[];
+  _id: string
+  coursename: string
+  field: string
+  description: string
+  duration: string
+  status: "Active" | "Inactive"
+  image?: string
+  dailyTasks: Task[]
 }
 
 const InternshipManager: React.FC = () => {
@@ -35,61 +31,53 @@ const InternshipManager: React.FC = () => {
     description: "",
     duration: "1",
     status: "Inactive" as "Active" | "Inactive",
-  });
-  const [image, setImage] = useState<File | null>(null);
-  const [internships, setInternships] = useState<Internship[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [selectedInternship, setSelectedInternship] =
-    useState<Internship | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([
-    { title: "", description: "", exercise: "", test: "" },
-  ]);
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showTaskViewModal, setShowTaskViewModal] = useState(false);
+  })
+  const [image, setImage] = useState<File | null>(null)
+  const [internships, setInternships] = useState<Internship[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([{ title: "", description: "", exercise: "", test: "" }])
+  const [showTaskModal, setShowTaskModal] = useState(false)
+  const [showTaskViewModal, setShowTaskViewModal] = useState(false)
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
 
   const fetchInternships = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/internships");
-      setInternships(res.data);
+      const res = await axios.get("http://localhost:5000/api/internships")
+      setInternships(res.data)
     } catch (error) {
-      console.error("Fetch error", error);
+      console.error("Fetch error", error)
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     const validTasks = tasks
       .filter((t) => t.title.trim() && t.description.trim())
-      .map((task, i) => ({ ...task, day: i + 1 }));
+      .map((task, i) => ({ ...task, day: i + 1 }))
 
-    const form = new FormData();
-    Object.entries(formData).forEach(([key, value]) => form.append(key, value));
-    if (image) form.append("image", image);
-    form.append("tasks", JSON.stringify(validTasks));
+    const form = new FormData()
+    Object.entries(formData).forEach(([key, value]) => form.append(key, value))
+    if (image) form.append("image", image)
+    form.append("tasks", JSON.stringify(validTasks))
 
     try {
       if (editingId) {
-        await axios.put(
-          `http://localhost:5000/api/internships/${editingId}`,
-          form
-        );
+        await axios.put(`http://localhost:5000/api/internships/${editingId}`, form)
       } else {
-        await axios.post("http://localhost:5000/api/internships", form);
+        await axios.post("http://localhost:5000/api/internships", form)
       }
-      resetForm();
-      fetchInternships();
+      resetForm()
+      fetchInternships()
     } catch (error) {
-      console.error("Error submitting internship", error);
+      console.error("Error submitting internship", error)
     }
-  };
+  }
 
   const resetForm = () => {
     setFormData({
@@ -98,12 +86,12 @@ const InternshipManager: React.FC = () => {
       description: "",
       duration: "1",
       status: "Inactive",
-    });
-    setImage(null);
-    setEditingId(null); // ✅ This ensures we don't accidentally update an old internship
-    setTasks([{ title: "", description: "", exercise: "", test: "" }]);
-    setShowForm(false);
-  };
+    })
+    setImage(null)
+    setEditingId(null)
+    setTasks([{ title: "", description: "", exercise: "", test: "" }])
+    setShowForm(false)
+  }
 
   const handleEdit = (internship: Internship) => {
     setFormData({
@@ -112,78 +100,68 @@ const InternshipManager: React.FC = () => {
       description: internship.description,
       duration: internship.duration,
       status: internship.status,
-    });
-    setImage(null);
-    setEditingId(internship._id);
-    setTasks(internship.dailyTasks);
-    setShowForm(true);
-  };
+    })
+    setImage(null)
+    setEditingId(internship._id)
+    setTasks(internship.dailyTasks)
+    setShowForm(true)
+  }
 
   const openTaskModal = (internship: Internship) => {
-    setSelectedInternship(internship);
+    setSelectedInternship(internship)
     setTasks(
       internship.dailyTasks.length > 0
         ? [...internship.dailyTasks]
-        : [{ title: "", description: "", exercise: "", test: "" }]
-    );
-    setShowTaskModal(true);
-  };
+        : [{ title: "", description: "", exercise: "", test: "" }],
+    )
+    setShowTaskModal(true)
+  }
 
   const closeTaskModal = () => {
-    setShowTaskModal(false);
-    setSelectedInternship(null);
-  };
+    setShowTaskModal(false)
+    setSelectedInternship(null)
+  }
 
   const openTaskViewModal = (internship: Internship) => {
-    setSelectedInternship(internship);
-    setShowTaskViewModal(true);
-  };
+    setSelectedInternship(internship)
+    setShowTaskViewModal(true)
+  }
 
   const closeTaskViewModal = () => {
-    setShowTaskViewModal(false);
-    setSelectedInternship(null);
-  };
+    setShowTaskViewModal(false)
+    setSelectedInternship(null)
+  }
 
-  const handleTaskChange = (
-    index: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const { name, value } = e.target;
-    const updated = [...tasks];
-    updated[index] = { ...updated[index], [name]: value };
-    setTasks(updated);
-  };
+  const handleTaskChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    const updated = [...tasks]
+    updated[index] = { ...updated[index], [name]: value }
+    setTasks(updated)
+  }
 
-  const addTask = () =>
-    setTasks([
-      ...tasks,
-      { title: "", description: "", exercise: "", test: "" },
-    ]);
+  const addTask = () => setTasks([...tasks, { title: "", description: "", exercise: "", test: "" }])
 
   const handleUpdateTasks = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     const validTasks = tasks
       .filter((t) => t.title.trim() && t.description.trim())
-      .map((task, i) => ({ ...task, day: i + 1 }));
+      .map((task, i) => ({ ...task, day: i + 1 }))
 
-    const form = new FormData();
-    form.append("tasks", JSON.stringify(validTasks));
+    const form = new FormData()
+    form.append("tasks", JSON.stringify(validTasks))
 
     try {
-      await axios.put(
-        `http://localhost:5000/api/internships/${selectedInternship?._id}`,
-        form
-      );
-      closeTaskModal();
-      fetchInternships();
+      await axios.put(`http://localhost:5000/api/internships/${selectedInternship?._id}`, form)
+      closeTaskModal()
+      fetchInternships()
     } catch (error) {
-      console.error("Error updating tasks", error);
+      console.error("Error updating tasks", error)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchInternships();
-  }, []);
+    fetchInternships()
+  }, [])
 
   return (
     <div className="p-6 min-h-screen bg-gray-900 text-white">
@@ -195,8 +173,8 @@ const InternshipManager: React.FC = () => {
           </h2>
           <button
             onClick={() => {
-              resetForm(); // ✅ Reset everything before showing form
-              setShowForm(true);
+              resetForm()
+              setShowForm(true)
             }}
             className="bg-white text-blue-900 px-4 py-2 rounded font-semibold hover:bg-gray-100 transition"
           >
@@ -237,9 +215,7 @@ const InternshipManager: React.FC = () => {
               <div className="mb-3">
                 <span
                   className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${
-                    item.status === "Active"
-                      ? "bg-green-700 text-green-100"
-                      : "bg-red-700 text-red-100"
+                    item.status === "Active" ? "bg-green-700 text-green-100" : "bg-red-700 text-red-100"
                   }`}
                 >
                   {item.status}
@@ -266,7 +242,7 @@ const InternshipManager: React.FC = () => {
                   className="text-blue-400 hover:text-blue-300 transition"
                   title="View Tasks"
                 >
-                  <FaRegEye size={16}  />
+                  <FaRegEye size={16} />
                 </button>
               </div>
             </div>
@@ -278,9 +254,7 @@ const InternshipManager: React.FC = () => {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-lg bg-black/40">
           <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-2xl">
-            <h3 className="text-2xl font-bold mb-4">
-              {editingId ? "Edit Internship" : "Create Internship"}
-            </h3>
+            <h3 className="text-2xl font-bold mb-4">{editingId ? "Edit Internship" : "Create Internship"}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <input
                 name="coursename"
@@ -324,16 +298,11 @@ const InternshipManager: React.FC = () => {
               </select>
               <input
                 type="file"
-                onChange={(e) =>
-                  e.target.files && setImage(e.target.files[0])
-                }
+                onChange={(e) => e.target.files && setImage(e.target.files[0])}
                 className="w-full border border-gray-600 p-2 rounded bg-gray-700"
               />
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500"
-                >
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">
                   {editingId ? "Update" : "Create"}
                 </button>
                 <button
@@ -358,10 +327,7 @@ const InternshipManager: React.FC = () => {
             </h2>
             <form onSubmit={handleUpdateTasks} className="space-y-4">
               {tasks.map((task, i) => (
-                <div
-                  key={i}
-                  className="mb-4 p-3 border border-gray-600 rounded-md bg-gray-900"
-                >
+                <div key={i} className="mb-4 p-3 border border-gray-600 rounded-md bg-gray-900">
                   <label className="block font-medium mb-2">Day {i + 1}</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <input
@@ -403,10 +369,7 @@ const InternshipManager: React.FC = () => {
                 + Add Task
               </button>
               <div className="flex gap-2 justify-end">
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500"
-                >
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">
                   Save Changes
                 </button>
                 <button
@@ -432,10 +395,7 @@ const InternshipManager: React.FC = () => {
             <div className="space-y-4">
               {selectedInternship.dailyTasks.length > 0 ? (
                 selectedInternship.dailyTasks.map((task, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border border-gray-600 rounded-md bg-gray-900"
-                  >
+                  <div key={index} className="p-4 border border-gray-600 rounded-md bg-gray-900">
                     <h4 className="font-semibold">Day {index + 1}</h4>
                     <p>
                       <strong>Title:</strong> {task.title}
@@ -456,10 +416,7 @@ const InternshipManager: React.FC = () => {
               )}
             </div>
             <div className="mt-4 flex justify-end">
-              <button
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-500"
-                onClick={closeTaskViewModal}
-              >
+              <button className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-500" onClick={closeTaskViewModal}>
                 Close
               </button>
             </div>
@@ -467,7 +424,7 @@ const InternshipManager: React.FC = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default InternshipManager;
+export default InternshipManager
