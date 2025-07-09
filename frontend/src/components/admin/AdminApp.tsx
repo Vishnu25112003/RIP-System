@@ -8,7 +8,7 @@ import Navbar from "./Components/Navbar"
 // Import your actual components
 import Dashboard from "./pages/Dashboard"
 import UserVerification from "./pages/UserVerification"
-import CourseAccepter from "./pages/CourseAccepter"
+import RegisteredUsers from "./pages/RegisteredUsers"
 import InternshipManager from "./pages/InternshipManager"
 import ActivityMonitor from "./pages/ActivityMonitor"
 import CertificateManager from "./pages/CertificateManager"
@@ -30,7 +30,7 @@ function AdminApp() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/users" element={<UserVerification />} />
-            <Route path="/courses" element={<CourseAccepter />} />
+            <Route path="/courses" element={<RegisteredUsers />} />
             <Route path="/internships" element={<InternshipManager />} />
             <Route path="/activities" element={<ActivityMonitor />} />
             <Route path="/certificates" element={<CertificateManager />} />

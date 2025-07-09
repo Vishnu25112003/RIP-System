@@ -11,7 +11,7 @@ interface SidebarProps {
 const topNavItems = [
   { name: "Dashboard", path: "/admin/dashboard", icon: <FiHome /> },
   { name: "UserVerification", path: "/admin/users", icon: <FiUserCheck /> },
-  { name: "CourseAccepter", path: "/admin/courses", icon: <FiClipboard /> },
+  { name: "RegisteredUsers", path: "/admin/courses", icon: <FiClipboard /> },
   { name: "Internships", path: "/admin/internships", icon: <FiBookOpen /> },
   { name: "MonitorActivities", path: "/admin/activities", icon: <FiActivity /> },
   { name: "Certificates", path: "/admin/certificates", icon: <FiAward /> },

@@ -40,7 +40,7 @@ const Navbar: React.FC = () => {
                 to="/user/internships"
                 className="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                Internship
+                Internships
               </Link>
               <Link
                 to="/user/profile"
