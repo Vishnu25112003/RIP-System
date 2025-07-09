@@ -33,11 +33,13 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")))
 // Routes
 const userVerificationRoutes = require("./routes/userVerificationRoutes")
 const internshipRoutes = require("./routes/internshipManagementRoutes")
-const authRoutes = require("./routes/authRoutes") // ✅ Add auth routes
+const authRoutes = require("./routes/authRoutes")
+const applicationRoutes = require("./routes/applicationRoutes") // Add this
 
 app.use("/api/userverification", userVerificationRoutes)
 app.use("/api/internships", internshipRoutes)
-app.use("/api/auth", authRoutes) // ✅ Add auth routes
+app.use("/api/auth", authRoutes)
+app.use("/api/applications", applicationRoutes) // Add this
 
 // Health check/test route
 app.get("/", (req, res) => {

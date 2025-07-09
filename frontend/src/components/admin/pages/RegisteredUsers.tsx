@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   FaUsers,
-  FaEdit,
   FaTrash,
   FaEye,
   FaUserGraduate,
@@ -47,7 +46,6 @@ interface User {
 const RegisteredUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([])
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [editingUser, setEditingUser] = useState<User | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -138,7 +136,7 @@ const RegisteredUsers: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <motion.div
-          animate={{ rotate: 360 }}
+          // animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
         />
@@ -261,12 +259,6 @@ const RegisteredUsers: React.FC = () => {
                       className="inline-flex items-center gap-1 border border-blue-400 bg-blue-100 text-blue-800 font-semibold py-1.5 px-3 rounded-lg shadow-sm hover:bg-blue-200 transition"
                     >
                       <FaEye /> View
-                    </button>
-                    <button
-                      onClick={() => setEditingUser(user)}
-                      className="inline-flex items-center gap-1 border border-yellow-400 bg-yellow-100 text-yellow-800 font-semibold py-1.5 px-3 rounded-lg shadow-sm hover:bg-yellow-200 transition"
-                    >
-                      <FaEdit /> Edit
                     </button>
                     <button
                       onClick={() => deleteUser(user._id)}

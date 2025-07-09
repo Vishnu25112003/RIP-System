@@ -9,7 +9,6 @@ import AvailableDomain from "./pages/AvailableDomains"
 import WorkFlow from "./pages/WorkFlow"
 import AboutUs from "./pages/AboutUs"
 import Internships from "./pages/Internships"
-// Add this import
 import Profile from "./pages/Profile"
 
 const UserApp: React.FC = () => {
@@ -41,7 +40,6 @@ const UserApp: React.FC = () => {
             </>
           }
         />
-        {/* Add this route */}
         <Route path="/profile" element={<Profile />} />
         <Route path="/internships" element={<Internships />} />
       </Routes>

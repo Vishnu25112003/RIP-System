@@ -1,10 +1,11 @@
 const { User } = require("../models/userVerificationModel")
+const { AuthUser } = require("../models/authModel")
 const bcrypt = require("bcryptjs")
 
-// Register a new user
+// Register a new user (auto-approved)
 exports.registerUser = async (req, res) => {
   try {
-    console.log("Received registration data:", req.body) // Debug log
+    console.log("Received registration data:", req.body)
 
     const { name, fathername, mailid, password, gender, phone, dob, education, address } = req.body
 
@@ -27,38 +28,49 @@ exports.registerUser = async (req, res) => {
     // Hash the password before saving
     const hashedPassword = await bcrypt.hash(password, 12)
 
+    // Create user in verification collection
     const newUser = new User({
       name,
       fathername: fathername || "Not provided",
       mailid,
       password: hashedPassword,
-      gender: gender || "Other", // Use provided gender or default to "Other"
+      gender: gender || "Other",
       phone: phone || "0000000000",
       dob: dob ? new Date(dob) : new Date("2000-01-01"),
       education: education || [],
       address: address || [],
-      status: "Pending", // Ensure status is set to Pending
+      status: "Active", // Auto-active
+      verified: true, // Auto-verified
     })
 
-    console.log("Creating user with data:", {
-      name: newUser.name,
-      gender: newUser.gender,
-      status: newUser.status,
-    }) // Debug log
-
     await newUser.save()
-    res.status(201).json({ message: "User registered successfully", user: newUser })
+
+    // Automatically create entry in AuthUser collection
+    const authUser = new AuthUser({
+      name: newUser.name,
+      mailid: newUser.mailid,
+      password: hashedPassword,
+      role: "User",
+      originalUserId: newUser._id,
+    })
+
+    await authUser.save()
+
+    res.status(201).json({
+      message: "User registered successfully and can now login",
+      user: newUser,
+    })
   } catch (error) {
     console.error("Registration error:", error)
     res.status(500).json({ error: error.message })
   }
 }
 
-// Get all users with pending status
+// Get all users with pending status (legacy - now returns empty for compatibility)
 exports.getPendingUsers = async (req, res) => {
   try {
-    const users = await User.find({ status: "Pending" })
-    res.status(200).json(users)
+    // Since we auto-approve, return empty array
+    res.status(200).json([])
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -74,31 +86,11 @@ exports.getAllUsers = async (req, res) => {
   }
 }
 
-// Approve or reject user
+// Update user status (legacy - for compatibility)
 exports.updateUserStatus = async (req, res) => {
   try {
     const { userId, status } = req.body
     const updatedUser = await User.findByIdAndUpdate(userId, { status }, { new: true })
-
-    // If user is approved, also create entry in AuthUser collection
-    if (status === "Approved") {
-      const { AuthUser } = require("../models/authModel")
-
-      // Check if user already exists in auth collection
-      const existingAuthUser = await AuthUser.findOne({ mailid: updatedUser.mailid })
-      if (!existingAuthUser) {
-        const authUser = new AuthUser({
-          name: updatedUser.name,
-          mailid: updatedUser.mailid,
-          password: updatedUser.password, // Already hashed
-          role: "User",
-          originalUserId: updatedUser._id,
-        })
-        await authUser.save()
-        console.log("Created AuthUser for approved user:", updatedUser.mailid)
-      }
-    }
-
     res.status(200).json(updatedUser)
   } catch (error) {
     console.error("Update user status error:", error)
@@ -147,7 +139,6 @@ exports.deleteUser = async (req, res) => {
     if (!deletedUser) return res.status(404).json({ message: "User not found" })
 
     // Also delete from AuthUser collection if exists
-    const { AuthUser } = require("../models/authModel")
     await AuthUser.findOneAndDelete({ originalUserId: userId })
 
     res.status(200).json({ message: "User deleted successfully" })

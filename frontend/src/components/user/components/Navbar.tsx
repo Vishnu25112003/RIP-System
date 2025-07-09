@@ -91,7 +91,7 @@ const Navbar: React.FC = () => {
                 to="/user/internships"
                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:text-blue-600"
               >
-                Internship
+                Internships
               </Link>
               <Link
                 to="/user/profile"

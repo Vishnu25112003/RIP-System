@@ -1,26 +1,23 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
+import React, { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Eye, EyeOff, User, Mail, Lock, Phone, Calendar } from "lucide-react"
+import { Eye, EyeOff, User, Mail, Lock, Phone } from "lucide-react"
 
 const Signin: React.FC = () => {
   const [formData, setFormData] = useState({
     name: "",
-    fathername: "",
     mailid: "",
-    password: "",
-    gender: "Male",
     phone: "",
-    dob: "",
+    password: "",
   })
+
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const navigate = useNavigate()
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -33,15 +30,11 @@ const Signin: React.FC = () => {
     setMessage("")
 
     try {
-      // Prepare the data in the exact format your existing controller expects
       const registrationData = {
         name: formData.name,
-        fathername: formData.fathername || "Not provided",
         mailid: formData.mailid,
         password: formData.password,
-        gender: formData.gender,
-        phone: formData.phone || "0000000000",
-        dob: formData.dob || "2000-01-01",
+        phone: formData.phone,
         education: [
           {
             course: "Not specified",
@@ -54,35 +47,28 @@ const Signin: React.FC = () => {
             address: "Not specified",
             city: "Not specified",
             state: "Not specified",
-            pincode: 0o000000, // Updated line
+            pincode: 0,
           },
         ],
       }
 
-      console.log("Sending registration data:", registrationData)
-
       const response = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registrationData),
       })
 
       const data = await response.json()
-      console.log("Registration response:", data)
 
       if (response.ok) {
-        setMessage("Registration successful! Your account is pending approval.")
-        setTimeout(() => {
-          navigate("/auth/login")
-        }, 2000)
+        setMessage("Registration successful! Redirecting...")
+        setTimeout(() => navigate("/auth/login"), 2000)
       } else {
         setMessage(data.message || "Registration failed")
       }
     } catch (error) {
-      setMessage("Network error. Please try again.")
       console.error("Registration error:", error)
+      setMessage("Network error. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -112,6 +98,7 @@ const Signin: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
             <div className="relative">
@@ -122,27 +109,13 @@ const Signin: React.FC = () => {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg"
                 placeholder="Enter your full name"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Father's Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                name="fathername"
-                value={formData.fathername}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter father's name (optional)"
-              />
-            </div>
-          </div>
-
+          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
             <div className="relative">
@@ -153,29 +126,15 @@ const Signin: React.FC = () => {
                 value={formData.mailid}
                 onChange={handleChange}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg"
                 placeholder="Enter your email"
               />
             </div>
           </div>
 
+          {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Gender *</label>
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
@@ -183,26 +142,14 @@ const Signin: React.FC = () => {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter phone number (optional)"
+                required
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg"
+                placeholder="Enter your phone number"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="date"
-                name="dob"
-                value={formData.dob}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
+          {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
             <div className="relative">
@@ -213,28 +160,30 @@ const Signin: React.FC = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg"
                 placeholder="Create a password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 disabled:opacity-50"
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
+        {/* Link to login */}
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Already have an account?{" "}

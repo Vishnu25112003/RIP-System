@@ -13,7 +13,7 @@ const topNavItems = [
   { name: "UserVerification", path: "/admin/users", icon: <FiUserCheck /> },
   { name: "RegisteredUsers", path: "/admin/courses", icon: <FiClipboard /> },
   { name: "Internships", path: "/admin/internships", icon: <FiBookOpen /> },
-  { name: "MonitorActivities", path: "/admin/activities", icon: <FiActivity /> },
+  { name: "Applications", path: "/admin/activities", icon: <FiActivity /> },
   { name: "Certificates", path: "/admin/certificates", icon: <FiAward /> },
 ]
 
@@ -74,3 +74,5 @@ export const Sidebar = ({ collapsed, setCollapsed }: SidebarProps) => {
     </div>
   )
 }
+
+export default Sidebar

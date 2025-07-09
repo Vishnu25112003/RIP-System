@@ -10,7 +10,7 @@ import Dashboard from "./pages/Dashboard"
 import UserVerification from "./pages/UserVerification"
 import RegisteredUsers from "./pages/RegisteredUsers"
 import InternshipManager from "./pages/InternshipManager"
-import ActivityMonitor from "./pages/ActivityMonitor"
+import ApplicationManager from "./pages/ApplicationManager"
 import CertificateManager from "./pages/CertificateManager"
 import Settings from "./pages/Settings"
 
@@ -32,7 +32,7 @@ function AdminApp() {
             <Route path="/users" element={<UserVerification />} />
             <Route path="/courses" element={<RegisteredUsers />} />
             <Route path="/internships" element={<InternshipManager />} />
-            <Route path="/activities" element={<ActivityMonitor />} />
+            <Route path="/activities" element={<ApplicationManager />} />
             <Route path="/certificates" element={<CertificateManager />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
