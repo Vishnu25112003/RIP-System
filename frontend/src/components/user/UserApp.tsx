@@ -10,6 +10,7 @@ import WorkFlow from "./pages/WorkFlow"
 import AboutUs from "./pages/AboutUs"
 import Internships from "./pages/Internships"
 import Profile from "./pages/Profile"
+import DailyTasks from "./pages/DailyTasks"
 
 const UserApp: React.FC = () => {
   return (
@@ -42,6 +43,7 @@ const UserApp: React.FC = () => {
         />
         <Route path="/profile" element={<Profile />} />
         <Route path="/internships" element={<Internships />} />
+        <Route path="/daily-tasks" element={<DailyTasks />} />
       </Routes>
     </div>
   )

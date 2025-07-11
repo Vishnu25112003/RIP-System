@@ -43,6 +43,7 @@ exports.submitApplication = async (req, res) => {
     })
 
     await newApplication.save()
+    console.log("New application created:", newApplication._id)
 
     res.status(201).json({
       message: "Application submitted successfully",
@@ -54,21 +55,149 @@ exports.submitApplication = async (req, res) => {
   }
 }
 
-// Get user's application status
+// FIXED: Get user's application status - return consistent format
 exports.getUserApplication = async (req, res) => {
   try {
     const { userId } = req.params
+    console.log("=== GET USER APPLICATION ===")
+    console.log("Requested userId:", userId)
 
+    // Validate userId format
+    if (!userId || userId.length !== 24) {
+      console.log("Invalid userId format:", userId)
+      return res.status(400).json({
+        hasApplication: false,
+        status: null,
+        courseSelection: null,
+        message: "Invalid user ID format",
+      })
+    }
+
+    // Check if user exists first
+    const user = await User.findById(userId)
+    if (!user) {
+      console.log("User not found for userId:", userId)
+      return res.status(404).json({
+        hasApplication: false,
+        status: null,
+        courseSelection: null,
+        message: "User not found",
+      })
+    }
+
+    console.log("User found:", user.name, user.mailid)
+
+    // Find latest application for this user
     const application = await Application.findOne({ userId }).sort({ createdAt: -1 })
 
     if (!application) {
-      return res.status(404).json({ message: "No application found" })
+      console.log("No application found for userId:", userId)
+      return res.status(200).json({
+        hasApplication: false,
+        status: null,
+        courseSelection: null,
+        message: "No application found",
+      })
     }
 
-    res.status(200).json(application)
+    console.log("Found application:", {
+      id: application._id,
+      status: application.status,
+      course: application.courseSelection,
+    })
+
+    // FIXED: Return consistent format with hasApplication flag
+    res.status(200).json({
+      hasApplication: true,
+      status: application.status,
+      courseSelection: application.courseSelection,
+      learningPreference: application.learningPreference,
+      technicalSkills: application.technicalSkills,
+      appliedAt: application.createdAt,
+      approvedAt: application.approvedAt,
+      adminFeedback: application.adminFeedback,
+      _id: application._id,
+    })
   } catch (error) {
     console.error("Get user application error:", error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json({
+      hasApplication: false,
+      status: null,
+      courseSelection: null,
+      error: error.message,
+    })
+  }
+}
+
+// FIXED: Get user application status by email - return consistent format
+exports.getUserApplicationByEmail = async (req, res) => {
+  try {
+    const { email } = req.params
+    console.log("=== GET USER APPLICATION BY EMAIL ===")
+    console.log("Requested email:", email)
+
+    if (!email) {
+      return res.status(400).json({
+        hasApplication: false,
+        status: null,
+        courseSelection: null,
+        message: "Email is required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ mailid: email })
+    if (!user) {
+      console.log("User not found for email:", email)
+      return res.status(404).json({
+        hasApplication: false,
+        status: null,
+        courseSelection: null,
+        message: "User not found",
+      })
+    }
+
+    console.log("Found user by email:", user._id, user.name)
+
+    // Find latest application for this user
+    const application = await Application.findOne({ userId: user._id }).sort({ createdAt: -1 })
+
+    if (!application) {
+      console.log("No application found for user:", user._id)
+      return res.status(200).json({
+        hasApplication: false,
+        status: null,
+        courseSelection: null,
+        message: "No application found",
+      })
+    }
+
+    console.log("Found application by email:", {
+      id: application._id,
+      status: application.status,
+      course: application.courseSelection,
+    })
+
+    // FIXED: Return consistent format with hasApplication flag
+    res.status(200).json({
+      hasApplication: true,
+      status: application.status,
+      courseSelection: application.courseSelection,
+      learningPreference: application.learningPreference,
+      technicalSkills: application.technicalSkills,
+      appliedAt: application.createdAt,
+      approvedAt: application.approvedAt,
+      adminFeedback: application.adminFeedback,
+      _id: application._id,
+    })
+  } catch (error) {
+    console.error("Get user application by email error:", error)
+    res.status(500).json({
+      hasApplication: false,
+      status: null,
+      courseSelection: null,
+      error: error.message,
+    })
   }
 }
 
@@ -76,7 +205,6 @@ exports.getUserApplication = async (req, res) => {
 exports.getAllApplications = async (req, res) => {
   try {
     const applications = await Application.find().sort({ createdAt: -1 }).populate("userId", "name mailid")
-
     res.status(200).json(applications)
   } catch (error) {
     console.error("Get all applications error:", error)
@@ -90,7 +218,6 @@ exports.getPendingApplications = async (req, res) => {
     const applications = await Application.find({ status: "Pending" })
       .sort({ createdAt: -1 })
       .populate("userId", "name mailid")
-
     res.status(200).json(applications)
   } catch (error) {
     console.error("Get pending applications error:", error)
@@ -102,6 +229,7 @@ exports.getPendingApplications = async (req, res) => {
 exports.updateApplicationStatus = async (req, res) => {
   try {
     const { applicationId, status, adminFeedback } = req.body
+    console.log("Updating application status:", { applicationId, status, adminFeedback })
 
     const updateData = {
       status,
@@ -119,6 +247,12 @@ exports.updateApplicationStatus = async (req, res) => {
     if (!updatedApplication) {
       return res.status(404).json({ message: "Application not found" })
     }
+
+    console.log("Application updated successfully:", {
+      id: updatedApplication._id,
+      status: updatedApplication.status,
+      course: updatedApplication.courseSelection,
+    })
 
     // Update user's hasApprovedApplication status
     if (status === "Approved") {
@@ -141,7 +275,6 @@ exports.updateApplicationStatus = async (req, res) => {
 exports.getApplicationDetails = async (req, res) => {
   try {
     const { applicationId } = req.params
-
     const application = await Application.findById(applicationId).populate("userId", "name mailid")
 
     if (!application) {

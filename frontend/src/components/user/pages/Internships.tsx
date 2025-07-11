@@ -18,17 +18,12 @@ import {
   Sparkles,
   ArrowRight,
   Lock,
-  User,
-  Mail,
-  Phone,
-  GraduationCap,
   CheckCircle,
   AlertCircle,
   Send,
-  Edit3,
-  Save,
-  Plus,
-  Trash2,
+  RefreshCw,
+  GraduationCap,
+  Trophy,
 } from "lucide-react"
 import { useAuth } from "../../../context/authContext"
 
@@ -49,6 +44,10 @@ interface UserApplication {
   courseSelection: string
   learningPreference: string
   technicalSkills: string[]
+  hasApplication: boolean
+  appliedAt?: string
+  approvedAt?: string
+  adminFeedback?: string
 }
 
 interface Education {
@@ -83,6 +82,7 @@ const Internships: React.FC = () => {
   const [userApplication, setUserApplication] = useState<UserApplication | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState("All")
   const [showEnrollForm, setShowEnrollForm] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -124,18 +124,135 @@ const Internships: React.FC = () => {
     }
   }
 
-  const fetchUserApplication = async () => {
-    if (!user?.id) return
+  // Debug function to check user data directly
+  const fetchDebugData = async () => {
+    if (!user?.mailid) return
 
     try {
-      const response = await fetch(`http://localhost:5000/api/applications/user/${user.id}`)
-      if (response.ok) {
+      console.log("=== FETCHING DEBUG DATA ===")
+      const response = await fetch(`http://localhost:5000/debug/user/${encodeURIComponent(user.mailid)}`)
+      const data = await response.json()
+      console.log("Debug data received:", data)
+
+      // If we have applications in debug data, use the latest one
+      if (data.applications && data.applications.length > 0) {
+        const latestApp = data.applications[0] // Already sorted by createdAt desc
+        console.log("Setting application from debug data:", latestApp)
+
+        const applicationData: UserApplication = {
+          _id: latestApp.id,
+          status: latestApp.status,
+          courseSelection: latestApp.courseSelection,
+          learningPreference: latestApp.learningPreference,
+          technicalSkills: latestApp.technicalSkills || [],
+          hasApplication: true,
+          appliedAt: latestApp.createdAt,
+          approvedAt: latestApp.approvedAt,
+          adminFeedback: latestApp.adminFeedback,
+        }
+
+        setUserApplication(applicationData)
+      }
+    } catch (error) {
+      console.error("Error fetching debug data:", error)
+    }
+  }
+
+  // ENHANCED: Function to fetch user application status with multiple fallbacks
+  const fetchUserApplication = async () => {
+    if (!user?.id && !user?.mailid) {
+      console.log("No user ID or email available")
+      return
+    }
+
+    try {
+      console.log("=== FETCHING APPLICATION STATUS ===")
+      console.log("User ID:", user.id)
+      console.log("User Email:", user.mailid)
+      console.log("User Profile ID:", userProfile?._id)
+
+      let response
+      let method = "unknown"
+      let success = false
+
+      // Try method 1: Use user.id if available
+      if (user.id && !success) {
+        try {
+          console.log("Trying method 1: user.id")
+          response = await fetch(`http://localhost:5000/api/applications/user/${user.id}`)
+          method = "user.id"
+          console.log("Method 1 response status:", response.status)
+          if (response.ok) success = true
+        } catch (e) {
+          console.log("Method 1 failed:", e)
+        }
+      }
+
+      // Try method 2: Use userProfile._id if method 1 failed
+      if (!success && userProfile?._id) {
+        try {
+          console.log("Trying method 2: userProfile._id")
+          response = await fetch(`http://localhost:5000/api/applications/user/${userProfile._id}`)
+          method = "userProfile._id"
+          console.log("Method 2 response status:", response.status)
+          if (response.ok) success = true
+        } catch (e) {
+          console.log("Method 2 failed:", e)
+        }
+      }
+
+      // Try method 3: Use email as backup
+      if (!success && user.mailid) {
+        try {
+          console.log("Trying method 3: email")
+          response = await fetch(`http://localhost:5000/api/applications/email/${encodeURIComponent(user.mailid)}`)
+          method = "email"
+          console.log("Method 3 response status:", response.status)
+          if (response.ok) success = true
+        } catch (e) {
+          console.log("Method 3 failed:", e)
+        }
+      }
+
+      if (success && response) {
         const data = await response.json()
-        setUserApplication(data)
-        console.log("User application:", data) // Debug log
+        console.log("=== APPLICATION DATA RECEIVED ===")
+        console.log("Method used:", method)
+        console.log("Full response:", data)
+
+        // Check for hasApplication field OR if we have application data directly
+        if (data.hasApplication === true || (data.status && data.courseSelection)) {
+          const applicationData: UserApplication = {
+            _id: data._id || "",
+            status: data.status,
+            courseSelection: data.courseSelection,
+            learningPreference: data.learningPreference,
+            technicalSkills: data.technicalSkills || [],
+            hasApplication: true,
+            appliedAt: data.appliedAt,
+            approvedAt: data.approvedAt,
+            adminFeedback: data.adminFeedback,
+          }
+
+          console.log("✅ Setting application data:", applicationData)
+          setUserApplication(applicationData)
+        } else {
+          console.log("❌ No application found in response")
+          setUserApplication(null)
+        }
+      } else {
+        console.log("❌ All fetch methods failed")
+        console.log("Final response status:", response?.status)
+
+        // Fallback: Try debug endpoint
+        console.log("🔧 Trying debug endpoint as fallback...")
+        await fetchDebugData()
       }
     } catch (error) {
       console.error("Error fetching user application:", error)
+      // Fallback: Try debug endpoint
+      console.log("🔧 Trying debug endpoint due to error...")
+      await fetchDebugData()
     }
   }
 
@@ -149,52 +266,94 @@ const Internships: React.FC = () => {
       if (profile) {
         setUserProfile(profile)
         setEditData(profile)
-        console.log("User profile:", profile) // Debug log
+        console.log("User profile loaded:", profile._id)
       }
     } catch (error) {
       console.error("Error fetching user profile:", error)
     }
   }
 
+  // Refresh application status
+  const refreshApplicationStatus = async () => {
+    console.log("=== REFRESHING APPLICATION STATUS ===")
+    setRefreshing(true)
+    await fetchUserApplication()
+    setRefreshing(false)
+    console.log("=== REFRESH COMPLETE ===")
+  }
+
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([fetchInternships(), fetchUserApplication(), fetchUserProfile()])
-      setLoading(false)
+      console.log("=== INITIAL DATA LOAD ===")
+      // Load profile first, then application (since we might need profile._id)
+      await fetchInternships()
+      await fetchUserProfile()
+      // Wait a bit for userProfile to be set, then fetch application
+      setTimeout(async () => {
+        await fetchUserApplication()
+        setLoading(false)
+        console.log("=== INITIAL LOAD COMPLETE ===")
+      }, 100)
     }
     loadData()
   }, [user])
 
-  // Check if user can access dashboard for a specific course
+  // Refetch application when userProfile is loaded
+  useEffect(() => {
+    if (userProfile && !userApplication) {
+      console.log("UserProfile loaded, refetching application...")
+      fetchUserApplication()
+    }
+  }, [userProfile])
+
+  // FIXED: Only match the exact course the user applied for
   const canAccessDashboard = (courseName: string) => {
-    console.log("Checking dashboard access for:", courseName)
-    console.log("User application:", userApplication)
+    console.log("=== DASHBOARD ACCESS CHECK ===")
+    console.log("Course Name:", courseName)
+    console.log("User Application:", userApplication)
 
     if (!userApplication) {
-      console.log("No user application found")
+      console.log("❌ No user application object")
       return false
     }
+
+    if (!userApplication.hasApplication) {
+      console.log("❌ hasApplication is false")
+      return false
+    }
+
+    console.log("Application Status:", userApplication.status)
 
     if (userApplication.status !== "Approved") {
-      console.log("Application not approved, status:", userApplication.status)
+      console.log("❌ Application not approved, status:", userApplication.status)
       return false
     }
 
-    // Check if the course matches (case-insensitive comparison)
-    const courseMatches = userApplication.courseSelection.toLowerCase() === courseName.toLowerCase()
-    console.log(
-      "Course matches:",
-      courseMatches,
-      "Applied for:",
-      userApplication.courseSelection,
-      "Checking:",
-      courseName,
-    )
+    // FIXED: Exact course name matching only
+    const appliedCourse = userApplication.courseSelection?.trim() || ""
+    const checkingCourse = courseName?.trim() || ""
+
+    console.log("Exact Course Match Check:")
+    console.log("- Applied for:", `"${appliedCourse}"`)
+    console.log("- Checking:", `"${checkingCourse}"`)
+
+    // Only allow exact match (case-insensitive)
+    const courseMatches = appliedCourse.toLowerCase() === checkingCourse.toLowerCase()
+
+    console.log("- Exact Match Result:", courseMatches)
+
+    if (courseMatches) {
+      console.log("✅ DASHBOARD ACCESS GRANTED!")
+    } else {
+      console.log("❌ Course doesn't match application exactly")
+    }
 
     return courseMatches
   }
 
   const handleGoToDashboard = () => {
-    window.location.href = "/user/dashboard"
+    console.log("Navigating to dashboard...")
+    window.location.href = "/user/daily-tasks"
   }
 
   const handleSkillToggle = (skill: string) => {
@@ -307,6 +466,8 @@ const Internships: React.FC = () => {
         technicalSkills: enrollFormData.technicalSkills,
       }
 
+      console.log("Submitting application:", applicationData)
+
       const response = await fetch("http://localhost:5000/api/applications/submit", {
         method: "POST",
         headers: {
@@ -323,7 +484,8 @@ const Internships: React.FC = () => {
           learningPreference: "",
           technicalSkills: [],
         })
-        await fetchUserApplication()
+        // Refresh application status after submission
+        await refreshApplicationStatus()
       } else {
         const errorData = await response.json()
         alert(errorData.message || "Failed to submit application")
@@ -459,45 +621,142 @@ const Internships: React.FC = () => {
         </div>
       </div>
 
-      {/* Application Status Banner */}
-      {userApplication && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      {/* IMPROVED: Application Status Banner */}
+      {userApplication && userApplication.hasApplication && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-lg ${
+            className={`relative overflow-hidden rounded-2xl shadow-lg ${
               userApplication.status === "Approved"
-                ? "bg-green-100 border border-green-300"
+                ? "bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200"
                 : userApplication.status === "Pending"
-                  ? "bg-yellow-100 border border-yellow-300"
-                  : "bg-red-100 border border-red-300"
+                  ? "bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200"
+                  : "bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-200"
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-gray-900">Application Status: {userApplication.status}</h3>
-                <p className="text-sm text-gray-600">
-                  Course Applied: <strong>{userApplication.courseSelection}</strong>
-                </p>
-                <p className="text-sm text-gray-600">
-                  {userApplication.status === "Approved"
-                    ? "Congratulations! Your application has been approved. You can now access the dashboard for your enrolled course."
-                    : userApplication.status === "Pending"
-                      ? "Your application is under review. We'll notify you once it's processed."
-                      : "Your application was not approved. Please contact support for more information."}
-                </p>
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-current rounded-full transform translate-x-16 -translate-y-16" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-current rounded-full transform -translate-x-12 translate-y-12" />
+            </div>
+
+            <div className="relative p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  {/* Status Header */}
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div
+                      className={`p-2 rounded-full ${
+                        userApplication.status === "Approved"
+                          ? "bg-green-100"
+                          : userApplication.status === "Pending"
+                            ? "bg-yellow-100"
+                            : "bg-red-100"
+                      }`}
+                    >
+                      {userApplication.status === "Approved" ? (
+                        <Trophy className="w-6 h-6 text-green-600" />
+                      ) : userApplication.status === "Pending" ? (
+                        <Clock className="w-6 h-6 text-yellow-600" />
+                      ) : (
+                        <AlertCircle className="w-6 h-6 text-red-600" />
+                      )}
+                    </div>
+                    <div>
+                      <h3
+                        className={`text-xl font-bold ${
+                          userApplication.status === "Approved"
+                            ? "text-green-800"
+                            : userApplication.status === "Pending"
+                              ? "text-yellow-800"
+                              : "text-red-800"
+                        }`}
+                      >
+                        Application Status: {userApplication.status}
+                      </h3>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <GraduationCap className="w-4 h-4 text-gray-600" />
+                        <p className="text-gray-700 font-medium">
+                          Course Applied: <span className="font-bold">"{userApplication.courseSelection}"</span>
+                        </p>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={refreshApplicationStatus}
+                          disabled={refreshing}
+                          className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-100 transition-colors"
+                          title="Refresh status"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Message */}
+                  <div className="mb-4">
+                    <p
+                      className={`text-lg leading-relaxed ${
+                        userApplication.status === "Approved"
+                          ? "text-green-700"
+                          : userApplication.status === "Pending"
+                            ? "text-yellow-700"
+                            : "text-red-700"
+                      }`}
+                    >
+                      {userApplication.status === "Approved"
+                        ? "🎉 Congratulations! Your application has been approved. You can now access the dashboard for your enrolled course."
+                        : userApplication.status === "Pending"
+                          ? "⏳ Your application is under review. We'll notify you once it's processed."
+                          : "❌ Your application was not approved. Please contact support for more information."}
+                    </p>
+                  </div>
+
+                  {/* Application Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    {userApplication.appliedAt && (
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        <span>Applied: {new Date(userApplication.appliedAt).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {userApplication.approvedAt && (
+                      <div className="flex items-center space-x-2 text-green-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Approved: {new Date(userApplication.approvedAt).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Admin Feedback */}
+                  {userApplication.adminFeedback && (
+                    <div className="mt-4 p-4 bg-white/50 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-800 mb-2 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2" />
+                        Admin Feedback:
+                      </h4>
+                      <p className="text-gray-700">{userApplication.adminFeedback}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Button */}
+                {userApplication.status === "Approved" && (
+                  <div className="ml-6">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleGoToDashboard}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-3"
+                    >
+                      <GraduationCap className="w-6 h-6" />
+                      <span>Access Dashboard</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </motion.button>
+                  </div>
+                )}
               </div>
-              {userApplication.status === "Approved" && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleGoToDashboard}
-                  className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-all duration-300 flex items-center space-x-2"
-                >
-                  <span>Go to Dashboard</span>
-                  <ArrowRight className="w-5 h-5" />
-                </motion.button>
-              )}
             </div>
           </motion.div>
         </div>
@@ -558,7 +817,7 @@ const Internships: React.FC = () => {
                     {internship.status}
                   </span>
                 </div>
-                {/* Dashboard Access Indicator */}
+                {/* Dashboard Access Indicator - Only for exact course match */}
                 {canAccessDashboard(internship.coursename) && (
                   <div className="absolute top-4 left-4">
                     <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center space-x-1">
@@ -616,7 +875,7 @@ const Internships: React.FC = () => {
             Take the next step and enroll in our comprehensive internship program
           </p>
 
-          {!userApplication ? (
+          {!userApplication || !userApplication.hasApplication ? (
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -649,7 +908,7 @@ const Internships: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* Enrollment Form Modal */}
+      {/* Enrollment Form Modal - Simplified */}
       <AnimatePresence>
         {showEnrollForm && userProfile && (
           <motion.div
@@ -664,7 +923,7 @@ const Internships: React.FC = () => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-8">
@@ -675,287 +934,7 @@ const Internships: React.FC = () => {
                   </button>
                 </div>
 
-                <form onSubmit={handleEnrollSubmit} className="space-y-8">
-                  {/* User Details Section */}
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-semibold text-gray-900 flex items-center">
-                        <User className="w-5 h-5 mr-2 text-blue-600" />
-                        Your Details
-                      </h3>
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setEditMode(!editMode)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                      >
-                        {editMode ? <X className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
-                        <span>{editMode ? "Cancel" : "Edit"}</span>
-                      </motion.button>
-                    </div>
-
-                    {/* Personal Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        {editMode ? (
-                          <input
-                            type="text"
-                            value={editData?.name || ""}
-                            onChange={(e) => setEditData(editData ? { ...editData, name: e.target.value } : null)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="flex items-center space-x-2 text-gray-900">
-                            <User className="w-4 h-4 text-gray-400" />
-                            <span>{userProfile.name}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Father's Name</label>
-                        {editMode ? (
-                          <input
-                            type="text"
-                            value={editData?.fathername || ""}
-                            onChange={(e) => setEditData(editData ? { ...editData, fathername: e.target.value } : null)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="flex items-center space-x-2 text-gray-900">
-                            <User className="w-4 h-4 text-gray-400" />
-                            <span>{userProfile.fathername}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <div className="flex items-center space-x-2 text-gray-900">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <span>{userProfile.mailid}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        {editMode ? (
-                          <input
-                            type="tel"
-                            value={editData?.phone || ""}
-                            onChange={(e) => setEditData(editData ? { ...editData, phone: e.target.value } : null)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="flex items-center space-x-2 text-gray-900">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span>{userProfile.phone}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                        {editMode ? (
-                          <input
-                            type="date"
-                            value={editData?.dob ? new Date(editData.dob).toISOString().split("T")[0] : ""}
-                            onChange={(e) => setEditData(editData ? { ...editData, dob: e.target.value } : null)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="flex items-center space-x-2 text-gray-900">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>{new Date(userProfile.dob).toLocaleDateString()}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                        {editMode ? (
-                          <select
-                            value={editData?.gender || ""}
-                            onChange={(e) =>
-                              setEditData(
-                                editData
-                                  ? { ...editData, gender: e.target.value as "Male" | "Female" | "Other" }
-                                  : null,
-                              )
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        ) : (
-                          <span className="text-gray-900">{userProfile.gender}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Education Section */}
-                    <div className="mb-6">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-semibold text-gray-900 flex items-center">
-                          <GraduationCap className="w-4 h-4 mr-2 text-purple-600" />
-                          Education
-                        </h4>
-                        {editMode && (
-                          <button
-                            type="button"
-                            onClick={addEducation}
-                            className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition-colors flex items-center space-x-1"
-                          >
-                            <Plus className="w-3 h-3" />
-                            <span>Add</span>
-                          </button>
-                        )}
-                      </div>
-                      {(editMode ? editData?.education : userProfile.education)?.map((edu, index) => (
-                        <div key={index} className="mb-3 p-3 bg-white rounded border">
-                          {editMode ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <input
-                                type="text"
-                                placeholder="Course"
-                                value={edu.course}
-                                onChange={(e) => updateEducation(index, "course", e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
-                              />
-                              <input
-                                type="text"
-                                placeholder="University"
-                                value={edu.university}
-                                onChange={(e) => updateEducation(index, "university", e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
-                              />
-                              <div className="flex space-x-2">
-                                <input
-                                  type="number"
-                                  placeholder="Percentage"
-                                  value={edu.percentage}
-                                  onChange={(e) => updateEducation(index, "percentage", Number(e.target.value))}
-                                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
-                                />
-                                {editData && editData.education.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeEducation(index)}
-                                    className="text-red-600 hover:text-red-800 p-1"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="font-medium">{edu.course}</p>
-                              <p className="text-sm text-gray-600">
-                                {edu.university} - {edu.percentage}%
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Address Section */}
-                    <div className="mb-6">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-semibold text-gray-900 flex items-center">
-                          <MapPin className="w-4 h-4 mr-2 text-red-600" />
-                          Address
-                        </h4>
-                        {editMode && (
-                          <button
-                            type="button"
-                            onClick={addAddress}
-                            className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors flex items-center space-x-1"
-                          >
-                            <Plus className="w-3 h-3" />
-                            <span>Add</span>
-                          </button>
-                        )}
-                      </div>
-                      {(editMode ? editData?.address : userProfile.address)?.map((addr, index) => (
-                        <div key={index} className="mb-3 p-3 bg-white rounded border">
-                          {editMode ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <input
-                                type="text"
-                                placeholder="Address"
-                                value={addr.address}
-                                onChange={(e) => updateAddress(index, "address", e.target.value)}
-                                className="md:col-span-2 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500"
-                              />
-                              <input
-                                type="text"
-                                placeholder="City"
-                                value={addr.city}
-                                onChange={(e) => updateAddress(index, "city", e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500"
-                              />
-                              <input
-                                type="text"
-                                placeholder="State"
-                                value={addr.state}
-                                onChange={(e) => updateAddress(index, "state", e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500"
-                              />
-                              <div className="flex space-x-2">
-                                <input
-                                  type="number"
-                                  placeholder="Pincode"
-                                  value={addr.pincode}
-                                  onChange={(e) => updateAddress(index, "pincode", Number(e.target.value))}
-                                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500"
-                                />
-                                {editData && editData.address.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeAddress(index)}
-                                    className="text-red-600 hover:text-red-800 p-1"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="font-medium">{addr.address}</p>
-                              <p className="text-sm text-gray-600">
-                                {addr.city}, {addr.state} - {addr.pincode}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {editMode && (
-                      <div className="flex justify-end space-x-3">
-                        <button
-                          type="button"
-                          onClick={() => setEditMode(false)}
-                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={saveProfile}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                        >
-                          <Save className="w-4 h-4" />
-                          <span>Save Changes</span>
-                        </motion.button>
-                      </div>
-                    )}
-                  </div>
-
+                <form onSubmit={handleEnrollSubmit} className="space-y-6">
                   {/* Course Selection */}
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-4">Course Selection *</h3>
@@ -1245,7 +1224,7 @@ const Internships: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Dashboard Button - Fixed Logic */}
+                      {/* FIXED: Dashboard Button - Only exact course match */}
                       {canAccessDashboard(selectedInternship.coursename) ? (
                         <motion.button
                           whileHover={{ scale: 1.02 }}
@@ -1253,7 +1232,8 @@ const Internships: React.FC = () => {
                           onClick={handleGoToDashboard}
                           className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                         >
-                          <span>Go to Dashboard</span>
+                          <CheckCircle className="w-5 h-5" />
+                          <span>Access Dashboard</span>
                           <ArrowRight className="w-5 h-5" />
                         </motion.button>
                       ) : (
@@ -1267,10 +1247,12 @@ const Internships: React.FC = () => {
                         <p className="text-sm text-gray-500">
                           {canAccessDashboard(selectedInternship.coursename)
                             ? "🎉 Access granted! Welcome to your dashboard"
-                            : userApplication
+                            : userApplication && userApplication.hasApplication
                               ? userApplication.status === "Pending"
                                 ? "⏳ Application under review"
-                                : "❌ Application not approved for this course"
+                                : userApplication.status === "Rejected"
+                                  ? "❌ Application not approved for this course"
+                                  : "📋 Application status: " + userApplication.status
                               : "📝 Submit an application to unlock dashboard access"}
                         </p>
                       </div>
