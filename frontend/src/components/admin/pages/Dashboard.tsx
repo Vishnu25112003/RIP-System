@@ -1,3 +1,7 @@
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
 import {
   FiUsers,
   FiUserCheck,
@@ -7,143 +11,283 @@ import {
   FiFile,
   FiCheckCircle,
   FiFileText,
+  FiRefreshCw, // Import for refresh icon
 } from "react-icons/fi"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { motion } from "framer-motion" // For animations
 
-const stats = [
-  {
-    title: "Registered Users",
-    value: 1200,
-    icon: <FiUsers className="text-3xl text-neonpink" />,
-  },
-  {
-    title: "Pending Verifications",
-    value: 45,
-    icon: <FiUserCheck className="text-3xl text-neonpink" />,
-  },
-  {
-    title: "Active Internships",
-    value: 37,
-    icon: <FiBookOpen className="text-3xl text-neonpink" />,
-  },
-  {
-    title: "Reports Today",
-    value: 85,
-    icon: <FiActivity className="text-3xl text-neonpink" />,
-  },
-  {
-    title: "Certificates Issued",
-    value: 214,
-    icon: <FiAward className="text-3xl text-neonpink" />,
-  },
-]
+interface DashboardStats {
+  totalRegisteredUsers: number
+  totalAuthUsers: number
+  activeInternships: number
+  totalApplications: number
+  pendingApplications: number
+  approvedApplications: number
+  totalTaskSubmissions: number
+  totalEnrollments: number
+  certificatesIssued: number
+}
 
-const users = [
-  { name: "Vishnu M", email: "vishnu@example.com", status: "Verified" },
-  { name: "Krithi R", email: "krithi@example.com", status: "Pending" },
-  { name: "Deepak K", email: "deepak@example.com", status: "Verified" },
-  { name: "Sara V", email: "sara@example.com", status: "Pending" },
-]
+interface LatestUser {
+  _id: string
+  name: string
+  mailid: string
+  status: string
+}
 
-const quickActions = [
-  {
-    label: "Create Internship",
-    icon: <FiFile className="text-3xl text-neonpink" />,
-    path: "/admin/internships",
-  },
-  {
-    label: "Verify Users",
-    icon: <FiCheckCircle className="text-3xl text-neonpink" />,
-    path: "/admin/users",
-  },
-  {
-    label: "View Reports",
-    icon: <FiFileText className="text-3xl text-neonpink" />,
-    path: "/admin/activities",
-  },
-]
+interface ActivityDataPoint {
+  date: string
+  newUsers: number
+  taskSubmissions: number
+}
 
-const activityData = [
-  { date: "Mon", activity: 20 },
-  { date: "Tue", activity: 35 },
-  { date: "Wed", activity: 30 },
-  { date: "Thu", activity: 50 },
-  { date: "Fri", activity: 40 },
-  { date: "Sat", activity: 60 },
-  { date: "Sun", activity: 45 },
-]
+const Dashboard: React.FC = () => {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [latestUsers, setLatestUsers] = useState<LatestUser[]>([])
+  const [activityData, setActivityData] = useState<ActivityDataPoint[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-const Dashboard = () => {
+  const fetchData = async () => {
+    setRefreshing(true)
+    setError(null)
+    try {
+      const [statsRes, usersRes, activityRes] = await Promise.all([
+        fetch("http://localhost:5000/api/admin/dashboard/stats"),
+        fetch("http://localhost:5000/api/admin/dashboard/latest-users"),
+        fetch("http://localhost:5000/api/admin/dashboard/weekly-activity"),
+      ])
+
+      if (statsRes.ok) {
+        const data = await statsRes.json()
+        setStats(data.stats)
+      } else {
+        throw new Error(`Failed to fetch stats: ${statsRes.statusText}`)
+      }
+
+      if (usersRes.ok) {
+        const data = await usersRes.json()
+        setLatestUsers(data.data)
+      } else {
+        throw new Error(`Failed to fetch latest users: ${usersRes.statusText}`)
+      }
+
+      if (activityRes.ok) {
+        const data = await activityRes.json()
+        setActivityData(data.data)
+      } else {
+        throw new Error(`Failed to fetch activity data: ${activityRes.statusText}`)
+      }
+    } catch (err: any) {
+      console.error("Error fetching dashboard data:", err)
+      setError(err.message || "Failed to load dashboard data.")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
+        <p className="ml-4 text-lg">Loading dashboard data...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900 text-red-400">
+        <p className="text-lg">Error: {error}</p>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={fetchData}
+          className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+        >
+          <FiRefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          <span>Retry</span>
+        </motion.button>
+      </div>
+    )
+  }
+
+  // Map stats to the existing structure
+  const displayStats = [
+    {
+      title: "Registered Users",
+      value: stats?.totalRegisteredUsers ?? 0,
+      icon: <FiUsers className="text-3xl text-neonpink" />,
+    },
+    {
+      title: "Pending Applications", // Reinterpreting "Pending Verifications"
+      value: stats?.pendingApplications ?? 0,
+      icon: <FiUserCheck className="text-3xl text-neonpink" />,
+    },
+    {
+      title: "Active Internships",
+      value: stats?.activeInternships ?? 0,
+      icon: <FiBookOpen className="text-3xl text-neonpink" />,
+    },
+    {
+      title: "Total Submissions", // Reinterpreting "Reports Today"
+      value: stats?.totalTaskSubmissions ?? 0,
+      icon: <FiActivity className="text-3xl text-neonpink" />,
+    },
+    {
+      title: "Certificates Issued",
+      value: stats?.certificatesIssued ?? 0,
+      icon: <FiAward className="text-3xl text-neonpink" />,
+    },
+  ]
+
+  const quickActions = [
+    {
+      label: "Create Internship",
+      icon: <FiFile className="text-3xl text-neonpink" />,
+      path: "/admin/internships",
+    },
+    {
+      label: "View Applications", // Changed from Verify Users
+      icon: <FiCheckCircle className="text-3xl text-neonpink" />,
+      path: "/admin/applications", // Assuming a route for applications
+    },
+    {
+      label: "View User Activity", // Changed from View Reports
+      icon: <FiFileText className="text-3xl text-neonpink" />,
+      path: "/admin/user-activity", // Assuming a route for user activity
+    },
+    {
+      label: "Manage Certificates", // New action
+      icon: <FiAward className="text-3xl text-neonpink" />,
+      path: "/admin/certificates", // Assuming a route for certificates
+    },
+  ]
+
   return (
-    <div className="p-10 text-white">
+    <div className="p-10 text-white bg-gray-900 min-h-screen">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={fetchData}
+          disabled={refreshing}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+        >
+          <FiRefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          <span>Refresh Data</span>
+        </motion.button>
+      </div>
+
       {/* Stats Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
-        {stats.map((stat, index) => (
-          <div key={index} className="bg-cardbg p-6 rounded-lg shadow hover:shadow-lg transition">
+        {displayStats.map((stat, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition"
+          >
             <div className="flex items-center gap-4">
               <div>{stat.icon}</div>
               <div>
                 <p className="text-xl font-semibold">{stat.value}</p>
-                <p className="text-md text-textMuted">{stat.title}</p>
+                <p className="text-md text-gray-400">{stat.title}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {/* Graph Section */}
-      <div className="bg-cardbg p-6 rounded-xl mb-8">
-        <h2 className="text-xl font-semibold mb-4">Weekly Activity Overview</h2>
+      <div className="bg-gray-800 p-6 rounded-xl mb-8">
+        <h2 className="text-xl font-semibold mb-4">Weekly Activity Overview (New Users & Submissions)</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={activityData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#444" />
             <XAxis dataKey="date" stroke="#ccc" />
             <YAxis stroke="#ccc" />
-            <Tooltip contentStyle={{ backgroundColor: "#1f2937", color: "#fff" }} />
-            <Line type="monotone" dataKey="activity" stroke="#a66cff" strokeWidth={3} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#1f2937", border: "none", borderRadius: "8px", padding: "10px" }}
+              labelStyle={{ color: "#fff", fontWeight: "bold" }}
+              itemStyle={{ color: "#fff" }}
+            />
+            <Line type="monotone" dataKey="newUsers" stroke="#a66cff" strokeWidth={3} name="New Users" />
+            <Line type="monotone" dataKey="taskSubmissions" stroke="#4ade80" strokeWidth={3} name="Task Submissions" />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       {/* Latest Users Table */}
-      <div className="bg-cardbg p-6 rounded-xl mb-8">
-        <FiUsers className="text-3xl text-neonpink" />
-        <h2 className="text-xl font-semibold mb-4">Latest Users</h2>
+      <div className="bg-gray-800 p-6 rounded-xl mb-8">
+        <FiUsers className="text-3xl text-neonpink mb-4" />
+        <h2 className="text-xl font-semibold mb-4">Latest Registered Users</h2>
         <table className="w-full text-sm text-left">
-          <thead className="text-textMuted border-b border-gray-700">
+          <thead className="text-gray-400 border-b border-gray-700">
             <tr>
-              <th className="py-2">Name</th>
-              <th className="py-2">Email</th>
-              <th className="py-2">Status</th>
+              <th className="py-2 px-4">Name</th>
+              <th className="py-2 px-4">Email</th>
+              <th className="py-2 px-4">Status</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user, idx) => (
-              <tr key={idx} className="border-b border-gray-800 hover:bg-gray-800 transition">
-                <td className="py-2">{user.name}</td>
-                <td className="py-2">{user.email}</td>
-                <td className={`py-2 font-medium ${user.status === "Verified" ? "text-green-400" : "text-yellow-400"}`}>
-                  {user.status}
+            {latestUsers.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-4 px-4 text-center text-gray-500">
+                  No recent users found.
                 </td>
               </tr>
-            ))}
+            ) : (
+              latestUsers.map((user, idx) => (
+                <motion.tr
+                  key={user._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="border-b border-gray-800 hover:bg-gray-700 transition"
+                >
+                  <td className="py-2 px-4">{user.name}</td>
+                  <td className="py-2 px-4">{user.mailid}</td>
+                  <td className={`py-2 px-4 font-medium ${user.status === "Active" ? "text-green-400" : "text-yellow-400"}`}>
+                    {user.status}
+                  </td>
+                </motion.tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-cardbg p-6 rounded-xl">
+      <div className="bg-gray-800 p-6 rounded-xl">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {quickActions.map((action, idx) => (
-            <a
+            <motion.a
               key={idx}
               href={action.path}
-              className="flex items-center gap-3 p-3 bg-gray-800 rounded hover:bg-gray-700 transition"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.15 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-700 rounded-lg hover:bg-gray-600 transition text-center"
             >
-              <span className="text-xl">{action.icon}</span>
-              <span>{action.label}</span>
-            </a>
+              <span className="text-4xl text-neonpink">{action.icon}</span>
+              <span className="text-lg font-medium">{action.label}</span>
+            </motion.a>
           ))}
         </div>
       </div>

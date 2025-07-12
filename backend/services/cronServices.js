@@ -4,10 +4,11 @@ const TaskSubmission = require("../models/taskSubmissionModel")
 const TaskUnlock = require("../models/taskUnlockModel")
 const Internship = require("../models/internshipManagementModel")
 const { Application } = require("../models/applicationModel")
+const UserCourseEnrollment = require("../models/userCourseEnrollmentModel")
 
 class CronService {
   constructor() {
-    this.timezone = "Asia/Kolkata" // Change to your timezone
+    this.timezone = "Asia/Kolkata"
     this.isRunning = false
   }
 
@@ -34,8 +35,8 @@ class CronService {
       },
     )
 
-    // Also run every minute for testing (remove in production)
-    // cron.schedule('* * * * *', async () => {
+    // Also run every 5 minutes for testing (remove in production)
+    // cron.schedule('*/5 * * * *', async () => {
     //   console.log('🔄 Testing Task Unlocker...');
     //   await this.unlockNextDayTasks();
     // });
@@ -72,110 +73,78 @@ class CronService {
             continue
           }
 
-          // Get user's submissions
+          // Get or create enrollment
+          let enrollment = await UserCourseEnrollment.findOne({
+            userId: userId,
+            courseId: course._id,
+          })
+
+          if (!enrollment) {
+            // Create enrollment from application
+            enrollment = new UserCourseEnrollment({
+              userId: userId,
+              courseId: course._id,
+              applicationId: application._id,
+              registrationDate: application.approvedAt || application.createdAt,
+              startDate: application.approvedAt || application.createdAt,
+            })
+            await enrollment.save()
+          }
+
+          // Calculate current day based on registration
+          const registrationDate = moment(enrollment.registrationDate).tz(this.timezone).startOf("day")
+          const currentDay = now.diff(registrationDate, "days") + 1
+
+          // Get user's submissions and unlocks
           const submissions = await TaskSubmission.find({
             userId: userId,
             courseId: course._id,
           }).sort({ day: 1 })
 
-          // Get user's unlocks
           const unlocks = await TaskUnlock.find({
             userId: userId,
             courseId: course._id,
           }).sort({ day: 1 })
 
-          // Check if user has completed a task yesterday that should unlock today
-          const unlockedCount = await this.processUserTaskUnlocks(userId, course, submissions, unlocks, now)
+          // Check each day up to current day for unlocking
+          for (let day = 2; day <= Math.min(currentDay, course.dailyTasks.length); day++) {
+            // Skip if already unlocked
+            const existingUnlock = unlocks.find((u) => u.day === day)
+            if (existingUnlock) continue
 
-          totalUnlocked += unlockedCount
+            // Check if previous day is completed
+            const previousDaySubmission = submissions.find((s) => s.day === day - 1)
+            if (!previousDaySubmission) continue
+
+            // Check if enough time has passed since previous day completion
+            const submissionDate = moment(previousDaySubmission.submittedAt).tz(this.timezone)
+            const nextUnlockTime = submissionDate.clone().add(1, "day").startOf("day")
+
+            if (now.isAfter(nextUnlockTime)) {
+              // Create unlock record
+              const taskUnlock = new TaskUnlock({
+                userId: userId,
+                courseId: course._id,
+                day: day,
+                unlockedAt: now.toDate(),
+                unlockedBy: "cron",
+              })
+
+              await taskUnlock.save()
+              totalUnlocked++
+
+              console.log(`🔓 Unlocked Day ${day} for user ${userId} (Course: ${course.coursename})`)
+            }
+          }
         } catch (userError) {
           console.error(`❌ Error processing user ${application.userId.name}:`, userError.message)
         }
       }
 
       console.log(`✅ Midnight Task Unlocker completed. ${totalUnlocked} tasks unlocked.`)
+      return totalUnlocked
     } catch (error) {
       console.error("❌ Error in midnight task unlocker:", error)
-    }
-  }
-
-  // Process task unlocks for a specific user
-  async processUserTaskUnlocks(userId, course, submissions, unlocks, now) {
-    let unlockedCount = 0
-
-    try {
-      // Day 1 is always unlocked by default, so start checking from Day 2
-      for (let day = 2; day <= course.dailyTasks.length; day++) {
-        // Check if this day is already unlocked
-        const existingUnlock = unlocks.find((u) => u.day === day)
-        if (existingUnlock) {
-          continue // Already unlocked
-        }
-
-        // Check if previous day is completed
-        const previousDaySubmission = submissions.find((s) => s.day === day - 1)
-        if (!previousDaySubmission) {
-          break // Previous day not completed, stop checking further days
-        }
-
-        // Check if previous day was completed yesterday or earlier
-        const submissionDate = moment(previousDaySubmission.submittedAt).tz(this.timezone)
-        const daysSinceSubmission = now.diff(submissionDate, "days")
-
-        // If the task was submitted yesterday or earlier, unlock the next day
-        if (daysSinceSubmission >= 1) {
-          // Create unlock record
-          const taskUnlock = new TaskUnlock({
-            userId: userId,
-            courseId: course._id,
-            day: day,
-            unlockedAt: now.toDate(),
-            unlockedBy: "cron",
-          })
-
-          await taskUnlock.save()
-          unlockedCount++
-
-          console.log(`🔓 Unlocked Day ${day} for user ${userId} (Course: ${course.coursename})`)
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Error processing unlocks for user ${userId}:`, error.message)
-    }
-
-    return unlockedCount
-  }
-
-  // Manual function to unlock a specific task (for admin use)
-  async manualUnlockTask(userId, courseId, day) {
-    try {
-      // Check if already unlocked
-      const existingUnlock = await TaskUnlock.findOne({
-        userId: userId,
-        courseId: courseId,
-        day: day,
-      })
-
-      if (existingUnlock) {
-        return { success: false, message: "Task already unlocked" }
-      }
-
-      // Create unlock record
-      const taskUnlock = new TaskUnlock({
-        userId: userId,
-        courseId: courseId,
-        day: day,
-        unlockedAt: new Date(),
-        unlockedBy: "manual",
-      })
-
-      await taskUnlock.save()
-
-      console.log(`🔓 Manually unlocked Day ${day} for user ${userId}`)
-      return { success: true, message: "Task unlocked successfully" }
-    } catch (error) {
-      console.error("❌ Error in manual unlock:", error)
-      return { success: false, message: error.message }
     }
   }
 
@@ -185,6 +154,7 @@ class CronService {
       isRunning: this.isRunning,
       timezone: this.timezone,
       nextMidnightRun: moment().tz(this.timezone).add(1, "day").startOf("day").format(),
+      currentTime: moment().tz(this.timezone).format(),
     }
   }
 

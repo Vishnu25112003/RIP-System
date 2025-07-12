@@ -15,11 +15,11 @@ import {
   Trophy,
   GraduationCap,
   TrendingUp,
-  Star,
   ChevronDown,
   RefreshCw,
   Calendar,
   Zap,
+  User,
 } from "lucide-react"
 import { useAuth } from "../../../context/authContext"
 
@@ -30,7 +30,7 @@ interface Task {
   description: string
   exercise?: string
   test?: string
-  status: "completed" | "current" | "locked" | "missed"
+  status: "completed" | "current" | "locked"
   canAccess: boolean
   isSubmitted: boolean
   submissionId?: string
@@ -49,6 +49,8 @@ interface TasksData {
   course: Course
   tasks: Task[]
   currentDay: number
+  actualCurrentDay: number
+  registrationDate: string
   totalSubmissions: number
   totalUnlocks: number
 }
@@ -57,6 +59,7 @@ interface TodayTask {
   task: Task
   courseId: string
   currentDay: number
+  taskDay: number
   canSubmit: boolean
 }
 
@@ -70,6 +73,15 @@ const DailyTasks: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [submissionText, setSubmissionText] = useState("")
   const [userProfile, setUserProfile] = useState<any>(null)
+
+  // Calculate days since registration for display
+  const getDaysSinceRegistration = (registrationDate: string) => {
+    const now = new Date()
+    const regDate = new Date(registrationDate)
+    const diffTime = Math.abs(now.getTime() - regDate.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
 
   // Fetch user profile to get userId
   const fetchUserProfile = async () => {
@@ -114,7 +126,8 @@ const DailyTasks: React.FC = () => {
         setTodayTask(data)
         console.log("Today's task loaded:", data)
       } else {
-        console.log("No accessible task for today or already submitted")
+        const errorData = await response.json()
+        console.log("No accessible task for today:", errorData.error)
       }
     } catch (error) {
       console.error("Error fetching today's task:", error)
@@ -127,16 +140,6 @@ const DailyTasks: React.FC = () => {
       const userId = await fetchUserProfile()
       if (userId) {
         await Promise.all([fetchUserTasks(userId), fetchTodayTask(userId)])
-
-        // Auto-expand Day 1 if it's available and no task is expanded yet
-        setTimeout(() => {
-          if (tasksData && !expandedTask) {
-            const day1Task = tasksData.tasks.find((t) => t.day === 1 && t.status === "current")
-            if (day1Task) {
-              setExpandedTask(1)
-            }
-          }
-        }, 500)
       }
       setLoading(false)
     }
@@ -182,7 +185,7 @@ const DailyTasks: React.FC = () => {
       formData.append("exerciseFile", selectedFile)
       formData.append("userId", userProfile._id)
       formData.append("courseId", todayTask.courseId)
-      formData.append("day", todayTask.currentDay.toString())
+      formData.append("day", todayTask.taskDay.toString())
       formData.append("submissionDescription", submissionText.trim())
 
       const response = await fetch("http://localhost:5000/api/tasks/submit", {
@@ -192,7 +195,7 @@ const DailyTasks: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json()
-        alert(`Task submitted successfully! 🎉\n\nNext task will unlock at midnight (12:00 AM) tomorrow.`)
+        alert(`Task submitted successfully! 🎉\n\nNext task will unlock based on your daily schedule.`)
 
         // Reset form
         setSelectedFile(null)
@@ -213,7 +216,7 @@ const DailyTasks: React.FC = () => {
     }
   }
 
-  // Get status icon and color - Updated logic
+  // Get status icon and color
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -264,9 +267,11 @@ const DailyTasks: React.FC = () => {
     )
   }
 
+  const daysSinceRegistration = getDaysSinceRegistration(tasksData.registrationDate)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Animated Hero Section */}
+      {/* Enhanced Hero Section with Registration Info */}
       <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
         {/* Animated Background Elements */}
         <div className="absolute inset-0">
@@ -294,18 +299,6 @@ const DailyTasks: React.FC = () => {
             }}
             className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full"
           />
-          <motion.div
-            animate={{
-              y: [0, -20, 0],
-              opacity: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: 8,
-              repeat: Number.POSITIVE_INFINITY,
-              ease: "easeInOut",
-            }}
-            className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/10 rounded-full"
-          />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -317,12 +310,9 @@ const DailyTasks: React.FC = () => {
               transition={{ duration: 1, delay: 0.2 }}
             >
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-pink-300">
-                Track your progress.
+                Welcome to Day {tasksData.actualCurrentDay}
               </span>
-              <span className="block text-white">Learn daily.</span>
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-blue-300">
-                Build your career.
-              </span>
+              <span className="block text-white">of your Internship!</span>
             </motion.h1>
 
             <motion.p
@@ -346,18 +336,18 @@ const DailyTasks: React.FC = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <Target className="w-5 h-5" />
-                <span>Day {tasksData.currentDay}</span>
+                <span>Day {tasksData.actualCurrentDay} of Journey</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Star className="w-5 h-5" />
-                <span>{tasksData.course.field}</span>
+                <User className="w-5 h-5" />
+                <span>Started {new Date(tasksData.registrationDate).toLocaleDateString()}</span>
               </div>
             </motion.div>
           </motion.div>
         </div>
       </div>
 
-      {/* Course Info Section */}
+      {/* Course Info Section with Registration Details */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -373,6 +363,10 @@ const DailyTasks: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">{tasksData.course.coursename}</h2>
                 <p className="text-gray-600">{tasksData.course.field}</p>
+                <p className="text-sm text-gray-500">
+                  Started on {new Date(tasksData.registrationDate).toLocaleDateString()} • Day{" "}
+                  {tasksData.actualCurrentDay} of your journey
+                </p>
               </div>
             </div>
             <div className="text-right">
@@ -413,8 +407,7 @@ const DailyTasks: React.FC = () => {
                       task.canAccess ? "cursor-pointer hover:shadow-lg" : "cursor-not-allowed"
                     }`}
                     onClick={() => {
-                      // Allow clicking on any current task, but especially ensure Day 1 works
-                      if (task.status === "current" || (task.day === 1 && !task.isSubmitted)) {
+                      if (task.status === "current") {
                         setExpandedTask(expandedTask === task.day ? null : task.day)
                       }
                     }}
@@ -428,18 +421,17 @@ const DailyTasks: React.FC = () => {
                           </h4>
                           <p className="text-gray-600 text-sm">
                             {task.status === "completed" && "✅ Completed"}
-                            {task.status === "current" && task.day === 1 && "🚀 Start Here - Click to expand"}
-                            {task.status === "current" && task.day > 1 && "⚡ Available Now - Click to expand"}
+                            {task.status === "current" && "⚡ Available Now - Click to expand"}
                             {task.status === "locked" && "🔒 " + (task.unlockDate || "Locked")}
                           </p>
                           {/* Show unlock information */}
-                          {task.unlockDate && task.status === "locked" && (
+                          {task.unlockDate && (
                             <div className="flex items-center mt-1 text-xs text-gray-500">
                               <Calendar className="w-3 h-3 mr-1" />
                               <span>{task.unlockDate}</span>
                             </div>
                           )}
-                          {task.unlockedBy && task.status === "current" && task.day > 1 && (
+                          {task.unlockedBy && task.status === "current" && (
                             <div className="flex items-center mt-1 text-xs text-green-600">
                               <Zap className="w-3 h-3 mr-1" />
                               <span>
@@ -511,7 +503,7 @@ const DailyTasks: React.FC = () => {
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                     <Send className="w-5 h-5 mr-2 text-green-600" />
-                    Submit Today's Task
+                    Submit Day {todayTask.taskDay} Task
                   </h3>
 
                   <form onSubmit={handleSubmitTask} className="space-y-4">
@@ -580,7 +572,7 @@ const DailyTasks: React.FC = () => {
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center text-blue-700 text-sm">
                       <Calendar className="w-4 h-4 mr-2" />
-                      <span>Next task unlocks at 12:00 AM tomorrow</span>
+                      <span>Next task unlocks based on your daily schedule</span>
                     </div>
                   </div>
                 </div>
@@ -593,10 +585,15 @@ const DailyTasks: React.FC = () => {
                       ? "Complete previous tasks to unlock today's task"
                       : "Check back tomorrow for new tasks"}
                   </p>
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">
+                      You're on Day {tasksData.actualCurrentDay} of your internship journey
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* Progress Stats */}
+              {/* Enhanced Progress Stats */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mt-6">
                 <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
                   <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
@@ -610,8 +607,8 @@ const DailyTasks: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Current Day:</span>
-                    <span className="font-semibold text-blue-600">{tasksData.currentDay}</span>
+                    <span className="text-gray-600">Journey Day:</span>
+                    <span className="font-semibold text-blue-600">{tasksData.actualCurrentDay}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Total Tasks:</span>
@@ -620,6 +617,10 @@ const DailyTasks: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Unlocked:</span>
                     <span className="font-semibold text-purple-600">{tasksData.totalUnlocks + 1}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Days Active:</span>
+                    <span className="font-semibold text-orange-600">{daysSinceRegistration}</span>
                   </div>
                 </div>
               </div>

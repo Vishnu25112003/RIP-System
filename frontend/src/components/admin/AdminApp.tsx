@@ -7,7 +7,7 @@ import Navbar from "./Components/Navbar"
 
 // Import your actual components
 import Dashboard from "./pages/Dashboard"
-import UserVerification from "./pages/UserVerification"
+import UserVerification from "./pages/UserAcivity"
 import RegisteredUsers from "./pages/RegisteredUsers"
 import InternshipManager from "./pages/InternshipManager"
 import ApplicationManager from "./pages/ApplicationManager"

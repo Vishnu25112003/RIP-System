@@ -38,6 +38,8 @@ const internshipRoutes = require("./routes/internshipManagementRoutes")
 const authRoutes = require("./routes/authRoutes")
 const applicationRoutes = require("./routes/applicationRoutes")
 const taskRoutes = require("./routes/taskSubmissionRoutes")
+const userActivityRoutes = require("./routes/userActivityRoutes")
+const adminDashboardRoutes = require("./routes/adminDashboardRoutes") // Make sure this line is present
 
 // Register routes
 app.use("/api/userverification", userVerificationRoutes)
@@ -45,6 +47,8 @@ app.use("/api/internships", internshipRoutes)
 app.use("/api/auth", authRoutes)
 app.use("/api/applications", applicationRoutes)
 app.use("/api/tasks", taskRoutes)
+app.use("/api/admin", userActivityRoutes)
+app.use("/api/admin/dashboard", adminDashboardRoutes) // Make sure this line is present and correct
 
 // Health check/test route
 app.get("/", (req, res) => {
@@ -56,6 +60,20 @@ app.get("/test", (req, res) => {
   res.json({
     message: "Server is working!",
     timestamp: new Date().toISOString(),
+  })
+})
+
+// Test route for admin endpoints
+app.get("/api/admin/test", (req, res) => {
+  res.json({
+    message: "Admin routes are working!",
+    timestamp: new Date().toISOString(),
+    availableEndpoints: [
+      "/api/admin/task-submissions",
+      "/api/admin/task-statistics",
+      "/api/admin/user-submissions/:userId",
+      "/api/admin/course-submissions/:courseId",
+    ],
   })
 })
 
@@ -150,6 +168,8 @@ const initializeCronJobs = () => {
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
+  console.log(`Admin API available at http://localhost:${PORT}/api/admin/`)
+  console.log(`Test admin endpoint: http://localhost:${PORT}/api/admin/test`)
 
   // Initialize cron jobs after server starts
   setTimeout(() => {

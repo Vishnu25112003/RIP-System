@@ -3,9 +3,58 @@ const TaskUnlock = require("../models/taskUnlockModel")
 const Internship = require("../models/internshipManagementModel")
 const { User } = require("../models/userVerificationModel")
 const { Application } = require("../models/applicationModel")
+const UserCourseEnrollment = require("../models/userCourseEnrollmentModel")
 const moment = require("moment-timezone")
+const taskUnlockService = require("../services/taskUnlockServices") // Declared taskUnlockService
 
-// Get all tasks for a user (with submission status and unlock status)
+// Helper function to get or create user enrollment
+const getUserEnrollment = async (userId, courseId) => {
+  let enrollment = await UserCourseEnrollment.findOne({
+    userId: userId,
+    courseId: courseId,
+  })
+
+  if (!enrollment) {
+    const application = await Application.findOne({
+      userId: userId,
+      status: "Approved",
+    })
+
+    if (!application) {
+      throw new Error("No approved application found")
+    }
+
+    const course = await Internship.findOne({
+      coursename: application.courseSelection,
+      status: "Active",
+    })
+
+    if (!course) {
+      throw new Error("Course not found")
+    }
+
+    enrollment = new UserCourseEnrollment({
+      userId: userId,
+      courseId: course._id,
+      applicationId: application._id,
+      registrationDate: application.approvedAt || application.createdAt,
+      startDate: application.approvedAt || application.createdAt,
+    })
+
+    await enrollment.save()
+  }
+
+  return enrollment
+}
+
+// Helper function to calculate current day
+const calculateCurrentDay = (registrationDate, timezone = "Asia/Kolkata") => {
+  const now = moment().tz(timezone)
+  const startDate = moment(registrationDate).tz(timezone).startOf("day")
+  return now.diff(startDate, "days") + 1
+}
+
+// Get all tasks for a user with proper day calculation
 exports.getUserTasks = async (req, res) => {
   try {
     const { userId } = req.params
@@ -24,8 +73,6 @@ exports.getUserTasks = async (req, res) => {
       })
     }
 
-    console.log("Found approved application for course:", application.courseSelection)
-
     // Find the course by name
     const course = await Internship.findOne({
       coursename: application.courseSelection,
@@ -38,21 +85,24 @@ exports.getUserTasks = async (req, res) => {
       })
     }
 
-    console.log("Found course with", course.dailyTasks.length, "tasks")
+    // Get or create enrollment
+    const enrollment = await getUserEnrollment(userId, course._id)
+    const currentDay = calculateCurrentDay(enrollment.registrationDate)
 
-    // Get user's submissions
+    // Get user's submissions and unlocks
     const submissions = await TaskSubmission.find({
       userId: userId,
       courseId: course._id,
     }).sort({ day: 1 })
 
-    // Get user's unlocks
     const unlocks = await TaskUnlock.find({
       userId: userId,
       courseId: course._id,
     }).sort({ day: 1 })
 
-    console.log("Found", submissions.length, "submissions and", unlocks.length, "unlocks")
+    console.log(`User registered on: ${moment(enrollment.registrationDate).format("YYYY-MM-DD")}`)
+    console.log(`Current day: ${currentDay}`)
+    console.log(`Found ${submissions.length} submissions and ${unlocks.length} unlocks`)
 
     // Build task list with updated status logic
     const tasksWithStatus = course.dailyTasks.map((task, index) => {
@@ -63,39 +113,61 @@ exports.getUserTasks = async (req, res) => {
       let status = "locked"
       let canAccess = false
       let unlockDate = null
+      const unlockReason = null
 
       if (submission) {
         // Task is completed
         status = "completed"
-        canAccess = false // Completed tasks can't be resubmitted
+        canAccess = false
+        unlockDate = `Completed on ${moment(submission.submittedAt).format("MMM DD, YYYY")}`
       } else {
-        // Task is not completed - check if it should be available
+        // Task is not completed - check availability
         if (dayNumber === 1) {
-          // Day 1 is ALWAYS available if not completed
+          // Day 1 is always available
           status = "current"
           canAccess = true
           unlockDate = "Available now"
-        } else {
-          // For other days, check if it's unlocked by cron job
+        } else if (dayNumber <= currentDay) {
+          // Within current day range, check unlock conditions
           if (unlock) {
             status = "current"
             canAccess = true
-            unlockDate = moment(unlock.unlockedAt).format("MMM DD, YYYY")
+            unlockDate = `Unlocked on ${moment(unlock.unlockedAt).format("MMM DD, YYYY")}`
           } else {
-            // Check if previous day is completed to show unlock info
+            // Check if should be unlocked
             const previousDaySubmission = submissions.find((s) => s.day === dayNumber - 1)
             if (previousDaySubmission) {
               const submissionDate = moment(previousDaySubmission.submittedAt)
-              const nextUnlockDate = submissionDate.add(1, "day").startOf("day")
-              unlockDate = `Unlocks ${nextUnlockDate.format("MMM DD, YYYY")} at 12:00 AM`
-              status = "locked"
-              canAccess = false
+              const nextUnlockDate = submissionDate.clone().add(1, "day").startOf("day")
+              const now = moment()
+
+              if (now.isAfter(nextUnlockDate)) {
+                // Should be unlocked, create unlock record
+                taskUnlockService
+                  .createUnlockRecord(userId, course._id, dayNumber, "auto")
+                  .then(() => console.log(`Auto-unlocked Day ${dayNumber} for user ${userId}`))
+                  .catch((err) => console.error(`Failed to auto-unlock Day ${dayNumber}:`, err))
+
+                status = "current"
+                canAccess = true
+                unlockDate = "Available now"
+              } else {
+                status = "locked"
+                canAccess = false
+                unlockDate = `Unlocks ${nextUnlockDate.format("MMM DD, YYYY")} at 12:00 AM`
+              }
             } else {
               status = "locked"
               canAccess = false
-              unlockDate = "Complete previous tasks first"
+              unlockDate = `Complete Day ${dayNumber - 1} first`
             }
           }
+        } else {
+          // Future day beyond current day
+          status = "locked"
+          canAccess = false
+          const targetDate = moment(enrollment.registrationDate).add(dayNumber - 1, "days")
+          unlockDate = `Available from ${targetDate.format("MMM DD, YYYY")}`
         }
       }
 
@@ -110,9 +182,9 @@ exports.getUserTasks = async (req, res) => {
       }
     })
 
-    // Find the next available task (first non-completed task)
+    // Find the next available task
     const nextAvailableTask = tasksWithStatus.find((task) => task.status === "current")
-    const currentDay = nextAvailableTask ? nextAvailableTask.day : tasksWithStatus.length + 1
+    const displayCurrentDay = nextAvailableTask ? nextAvailableTask.day : Math.min(currentDay, course.dailyTasks.length)
 
     res.json({
       course: {
@@ -122,7 +194,9 @@ exports.getUserTasks = async (req, res) => {
         description: course.description,
       },
       tasks: tasksWithStatus,
-      currentDay,
+      currentDay: displayCurrentDay,
+      actualCurrentDay: currentDay, // Based on registration date
+      registrationDate: enrollment.registrationDate,
       totalSubmissions: submissions.length,
       totalUnlocks: unlocks.length,
     })
@@ -132,7 +206,7 @@ exports.getUserTasks = async (req, res) => {
   }
 }
 
-// Get today's task (if accessible)
+// Get today's available task
 exports.getTodayTask = async (req, res) => {
   try {
     const { userId } = req.params
@@ -174,6 +248,10 @@ exports.getTodayTask = async (req, res) => {
       courseId: course._id,
     }).sort({ day: 1 })
 
+    // Get or create enrollment
+    const enrollment = await getUserEnrollment(userId, course._id)
+    const currentDay = calculateCurrentDay(enrollment.registrationDate)
+
     // Find the next task that should be available
     let nextAvailableDay = null
 
@@ -182,37 +260,58 @@ exports.getTodayTask = async (req, res) => {
     if (!day1Submission) {
       nextAvailableDay = 1
     } else {
-      // Check other days based on unlocks
-      for (let day = 2; day <= course.dailyTasks.length; day++) {
+      // Check other days based on unlocks and current day
+      for (let day = 2; day <= Math.min(currentDay, course.dailyTasks.length); day++) {
         const submission = submissions.find((s) => s.day === day)
         const unlock = unlocks.find((u) => u.day === day)
 
-        if (!submission && unlock) {
-          nextAvailableDay = day
-          break
+        if (!submission && (unlock || day <= currentDay)) {
+          // Check if should be unlocked
+          const previousDaySubmission = submissions.find((s) => s.day === day - 1)
+          if (previousDaySubmission) {
+            const submissionDate = moment(previousDaySubmission.submittedAt)
+            const nextUnlockTime = submissionDate.clone().add(1, "day").startOf("day")
+            const now = moment()
+            if (now.isAfter(nextUnlockTime)) {
+              nextAvailableDay = day
+              break
+            }
+          }
         }
       }
     }
 
-    if (!nextAvailableDay) {
-      return res.status(400).json({
-        error: "No available tasks or all tasks completed",
-      })
+    let availableTask = null
+    let canSubmit = false
+    let reason = null
+    let taskDay = null
+
+    if (nextAvailableDay) {
+      const task = course.dailyTasks.find((t) => t.day === nextAvailableDay)
+      if (task) {
+        availableTask = task
+        canSubmit = true
+        taskDay = nextAvailableDay
+      } else {
+        reason = "Task not found for the next available day"
+      }
+    } else {
+      reason = "No available tasks"
     }
 
-    const todayTask = course.dailyTasks.find((task) => task.day === nextAvailableDay)
-
-    if (!todayTask) {
-      return res.status(404).json({
-        error: "Task not found",
+    if (!availableTask) {
+      return res.status(400).json({
+        error: reason || "No available tasks",
+        currentDay: currentDay,
       })
     }
 
     res.json({
-      task: todayTask,
+      task: availableTask,
       courseId: course._id,
-      currentDay: nextAvailableDay,
-      canSubmit: true,
+      currentDay: currentDay,
+      taskDay: taskDay,
+      canSubmit: canSubmit,
     })
   } catch (error) {
     console.error("Error fetching today's task:", error)
@@ -220,7 +319,7 @@ exports.getTodayTask = async (req, res) => {
   }
 }
 
-// Submit task (with unlock scheduling)
+// Submit task with proper validation
 exports.submitTask = async (req, res) => {
   try {
     const { userId, courseId, day, submissionDescription } = req.body
@@ -237,13 +336,15 @@ exports.submitTask = async (req, res) => {
       return res.status(400).json({ error: "Submission description is required" })
     }
 
+    const dayNum = Number.parseInt(day)
+
     // Find the course and task
     const course = await Internship.findById(courseId)
     if (!course) {
       return res.status(404).json({ error: "Course not found" })
     }
 
-    const task = course.dailyTasks.find((t) => t.day === Number.parseInt(day))
+    const task = course.dailyTasks.find((t) => t.day === dayNum)
     if (!task) {
       return res.status(404).json({ error: "Task not found" })
     }
@@ -252,7 +353,7 @@ exports.submitTask = async (req, res) => {
     const existingSubmission = await TaskSubmission.findOne({
       userId: userId,
       courseId: courseId,
-      day: Number.parseInt(day),
+      day: dayNum,
     })
 
     if (existingSubmission) {
@@ -261,7 +362,7 @@ exports.submitTask = async (req, res) => {
       })
     }
 
-    // Validate task availability
+    // Get user's submissions and unlocks
     const submissions = await TaskSubmission.find({
       userId: userId,
       courseId: courseId,
@@ -272,28 +373,39 @@ exports.submitTask = async (req, res) => {
       courseId: courseId,
     }).sort({ day: 1 })
 
-    const dayNum = Number.parseInt(day)
+    // Get enrollment for validation
+    const enrollment = await getUserEnrollment(userId, courseId)
+    const currentDay = calculateCurrentDay(enrollment.registrationDate)
 
-    // Check if this task is available for submission
     let canSubmit = false
 
+    // Validate task availability
     if (dayNum === 1) {
-      // Day 1 is always available if not completed
       canSubmit = true
+    } else if (dayNum <= currentDay) {
+      // Check if previous day is completed and enough time has passed
+      const previousDaySubmission = submissions.find((s) => s.day === dayNum - 1)
+      if (previousDaySubmission) {
+        const submissionDate = moment(previousDaySubmission.submittedAt)
+        const nextUnlockTime = submissionDate.clone().add(1, "day").startOf("day")
+        const now = moment()
+        canSubmit = now.isAfter(nextUnlockTime)
+      }
     } else {
-      // Check if this day is unlocked
-      const unlock = unlocks.find((u) => u.day === dayNum)
-      canSubmit = !!unlock
+      canSubmit = false
     }
 
     if (!canSubmit) {
       return res.status(400).json({
-        error: `Day ${dayNum} task is not yet available. Complete previous tasks and wait for unlock.`,
+        error: "Task is not available for submission yet.",
       })
     }
 
-    // Calculate next task unlock date (next day at midnight)
-    const nextTaskUnlockDate = moment().add(1, "day").startOf("day").toDate()
+    // Get enrollment for next unlock calculation
+    const nextTaskUnlockDate = moment(enrollment.registrationDate)
+      .add(dayNum, "days") // Next day after current task day
+      .startOf("day")
+      .toDate()
 
     // Create submission
     const submission = new TaskSubmission({
@@ -311,7 +423,7 @@ exports.submitTask = async (req, res) => {
     await submission.save()
 
     console.log("Task submitted successfully:", submission._id)
-    console.log("Next task will unlock at:", nextTaskUnlockDate)
+    console.log("Next task will be available from:", nextTaskUnlockDate)
 
     res.status(201).json({
       message: "Task submitted successfully!",
@@ -333,9 +445,12 @@ exports.getSubmissionHistory = async (req, res) => {
 
     const unlocks = await TaskUnlock.find({ userId }).sort({ day: 1 })
 
+    const enrollments = await UserCourseEnrollment.find({ userId }).populate("courseId", "coursename field")
+
     res.json({
       submissions,
       unlocks,
+      enrollments,
     })
   } catch (error) {
     console.error("Error fetching submission history:", error)
@@ -348,14 +463,32 @@ exports.manualUnlockTask = async (req, res) => {
   try {
     const { userId, courseId, day } = req.body
 
-    const cronService = require("../services/cronService")
-    const result = await cronService.manualUnlockTask(userId, courseId, day)
+    // Check if already unlocked
+    const existingUnlock = await TaskUnlock.findOne({
+      userId: userId,
+      courseId: courseId,
+      day: day,
+    })
 
-    if (result.success) {
-      res.json({ message: result.message })
-    } else {
-      res.status(400).json({ error: result.message })
+    if (existingUnlock) {
+      return res.status(400).json({ error: "Task already unlocked" })
     }
+
+    // Create unlock record
+    const taskUnlock = new TaskUnlock({
+      userId: userId,
+      courseId: courseId,
+      day: day,
+      unlockedAt: new Date(),
+      unlockedBy: "manual",
+    })
+
+    await taskUnlock.save()
+
+    res.json({
+      message: "Task unlocked successfully",
+      unlock: taskUnlock,
+    })
   } catch (error) {
     console.error("Error in manual unlock:", error)
     res.status(500).json({ error: error.message })
@@ -365,7 +498,7 @@ exports.manualUnlockTask = async (req, res) => {
 // Get cron job status
 exports.getCronStatus = async (req, res) => {
   try {
-    const cronService = require("../services/cronService")
+    const cronService = require("../services/cronServices")
     const status = cronService.getStatus()
     res.json(status)
   } catch (error) {

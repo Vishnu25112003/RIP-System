@@ -85,8 +85,6 @@ const Internships: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState("All")
   const [showEnrollForm, setShowEnrollForm] = useState(false)
-  const [editMode, setEditMode] = useState(false)
-  const [editData, setEditData] = useState<UserProfile | null>(null)
   const [enrollFormData, setEnrollFormData] = useState({
     courseSelection: "",
     learningPreference: "",
@@ -265,7 +263,6 @@ const Internships: React.FC = () => {
       const profile = allUsers.find((u: UserProfile) => u.mailid === user.mailid)
       if (profile) {
         setUserProfile(profile)
-        setEditData(profile)
         console.log("User profile loaded:", profile._id)
       }
     } catch (error) {
@@ -363,77 +360,6 @@ const Internships: React.FC = () => {
         ? prev.technicalSkills.filter((s) => s !== skill)
         : [...prev.technicalSkills, skill],
     }))
-  }
-
-  const addEducation = () => {
-    if (!editData) return
-    setEditData({
-      ...editData,
-      education: [...editData.education, { course: "", university: "", percentage: 0 }],
-    })
-  }
-
-  const removeEducation = (index: number) => {
-    if (!editData || editData.education.length <= 1) return
-    setEditData({
-      ...editData,
-      education: editData.education.filter((_, i) => i !== index),
-    })
-  }
-
-  const updateEducation = (index: number, field: keyof Education, value: string | number) => {
-    if (!editData) return
-    const updatedEducation = [...editData.education]
-    updatedEducation[index] = { ...updatedEducation[index], [field]: value }
-    setEditData({ ...editData, education: updatedEducation })
-  }
-
-  const addAddress = () => {
-    if (!editData) return
-    setEditData({
-      ...editData,
-      address: [...editData.address, { address: "", city: "", state: "", pincode: 0 }],
-    })
-  }
-
-  const removeAddress = (index: number) => {
-    if (!editData || editData.address.length <= 1) return
-    setEditData({
-      ...editData,
-      address: editData.address.filter((_, i) => i !== index),
-    })
-  }
-
-  const updateAddress = (index: number, field: keyof Address, value: string | number) => {
-    if (!editData) return
-    const updatedAddress = [...editData.address]
-    updatedAddress[index] = { ...updatedAddress[index], [field]: value }
-    setEditData({ ...editData, address: updatedAddress })
-  }
-
-  const saveProfile = async () => {
-    if (!editData || !userProfile) return
-
-    try {
-      const response = await fetch(`http://localhost:5000/api/userverification/user/${userProfile._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(editData),
-      })
-
-      if (response.ok) {
-        const updatedProfile = await response.json()
-        setUserProfile(updatedProfile)
-        setEditData(updatedProfile)
-        setEditMode(false)
-        alert("Profile updated successfully!")
-      }
-    } catch (error) {
-      console.error("Error saving profile:", error)
-      alert("Error saving profile")
-    }
   }
 
   const validateEnrollForm = () => {
@@ -908,7 +834,7 @@ const Internships: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* Enrollment Form Modal - Simplified */}
+      {/* Enrollment Form Modal - With Tailwind Scrollbar */}
       <AnimatePresence>
         {showEnrollForm && userProfile && (
           <motion.div
@@ -1091,7 +1017,7 @@ const Internships: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Detailed Modal */}
+      {/* Detailed Modal - With Tailwind Scrollbar */}
       <AnimatePresence>
         {selectedInternship && (
           <motion.div
