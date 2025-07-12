@@ -1,16 +1,17 @@
+// pages/UserApp.tsx
 import type React from "react"
 import { Routes, Route } from "react-router-dom"
 import Navbar from "./components/Navbar"
 import Footer from "./components/Footer"
 
 // Import your actual page components
-import Homepage from "./pages/HomePage"
-import AvailableDomain from "./pages/AvailableDomains"
-import WorkFlow from "./pages/WorkFlow"
-import AboutUs from "./pages/AboutUs"
-import Internships from "./pages/Internships"
+import Homepage from "./pages/Intropage/HomePage"
+import AvailableDomain from "./pages/Intropage/AvailableDomains"
+import WorkFlow from "./pages/Intropage/WorkFlow"
+import AboutUs from "./pages/Intropage/AboutUs"
+import Internships from "./pages/InternMain" 
 import Profile from "./pages/Profile"
-import DailyTasks from "./pages/DailyTasks"
+import DailyTasks from "./pages/DailytaskMain"
 
 const UserApp: React.FC = () => {
   return (
