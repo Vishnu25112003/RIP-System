@@ -11,10 +11,10 @@ import {
   FiFile,
   FiCheckCircle,
   FiFileText,
-  FiRefreshCw, // Import for refresh icon
+  FiRefreshCw,
 } from "react-icons/fi"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { motion } from "framer-motion" // For animations
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts" // Changed to AreaChart and Area
+import { motion } from "framer-motion"
 
 interface DashboardStats {
   totalRegisteredUsers: number
@@ -97,7 +97,7 @@ const Dashboard: React.FC = () => {
       <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
         />
         <p className="ml-4 text-lg">Loading dashboard data...</p>
@@ -122,7 +122,6 @@ const Dashboard: React.FC = () => {
     )
   }
 
-  // Map stats to the existing structure
   const displayStats = [
     {
       title: "Registered Users",
@@ -130,7 +129,7 @@ const Dashboard: React.FC = () => {
       icon: <FiUsers className="text-3xl text-neonpink" />,
     },
     {
-      title: "Pending Applications", // Reinterpreting "Pending Verifications"
+      title: "Pending Applications",
       value: stats?.pendingApplications ?? 0,
       icon: <FiUserCheck className="text-3xl text-neonpink" />,
     },
@@ -140,7 +139,7 @@ const Dashboard: React.FC = () => {
       icon: <FiBookOpen className="text-3xl text-neonpink" />,
     },
     {
-      title: "Total Submissions", // Reinterpreting "Reports Today"
+      title: "Total Submissions",
       value: stats?.totalTaskSubmissions ?? 0,
       icon: <FiActivity className="text-3xl text-neonpink" />,
     },
@@ -158,19 +157,19 @@ const Dashboard: React.FC = () => {
       path: "/admin/internships",
     },
     {
-      label: "View Applications", // Changed from Verify Users
+      label: "View Applications",
       icon: <FiCheckCircle className="text-3xl text-neonpink" />,
-      path: "/admin/applications", // Assuming a route for applications
+      path: "/admin/applications",
     },
     {
-      label: "View User Activity", // Changed from View Reports
+      label: "View User Activity",
       icon: <FiFileText className="text-3xl text-neonpink" />,
-      path: "/admin/user-activity", // Assuming a route for user activity
+      path: "/admin/user-activity",
     },
     {
-      label: "Manage Certificates", // New action
+      label: "Manage Certificates",
       icon: <FiAward className="text-3xl text-neonpink" />,
-      path: "/admin/certificates", // Assuming a route for certificates
+      path: "/admin/certificates",
     },
   ]
 
@@ -211,11 +210,21 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Graph Section */}
+      {/* Graph Section (Area Chart) */}
       <div className="bg-gray-800 p-6 rounded-xl mb-8">
         <h2 className="text-xl font-semibold mb-4">Weekly Activity Overview (New Users & Submissions)</h2>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={activityData}>
+          <AreaChart data={activityData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorNewUsers" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#a66cff" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#a66cff" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorTaskSubmissions" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#444" />
             <XAxis dataKey="date" stroke="#ccc" />
             <YAxis stroke="#ccc" />
@@ -224,9 +233,24 @@ const Dashboard: React.FC = () => {
               labelStyle={{ color: "#fff", fontWeight: "bold" }}
               itemStyle={{ color: "#fff" }}
             />
-            <Line type="monotone" dataKey="newUsers" stroke="#a66cff" strokeWidth={3} name="New Users" />
-            <Line type="monotone" dataKey="taskSubmissions" stroke="#4ade80" strokeWidth={3} name="Task Submissions" />
-          </LineChart>
+            <Legend wrapperStyle={{ paddingTop: "10px", color: "#ccc" }} />
+            <Area
+              type="monotone"
+              dataKey="newUsers"
+              stroke="#a66cff"
+              fillOpacity={1}
+              fill="url(#colorNewUsers)"
+              name="New Users"
+            />
+            <Area
+              type="monotone"
+              dataKey="taskSubmissions"
+              stroke="#4ade80"
+              fillOpacity={1}
+              fill="url(#colorTaskSubmissions)"
+              name="Task Submissions"
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
 
@@ -260,7 +284,9 @@ const Dashboard: React.FC = () => {
                 >
                   <td className="py-2 px-4">{user.name}</td>
                   <td className="py-2 px-4">{user.mailid}</td>
-                  <td className={`py-2 px-4 font-medium ${user.status === "Active" ? "text-green-400" : "text-yellow-400"}`}>
+                  <td
+                    className={`py-2 px-4 font-medium ${user.status === "Active" ? "text-green-400" : "text-yellow-400"}`}
+                  >
                     {user.status}
                   </td>
                 </motion.tr>
