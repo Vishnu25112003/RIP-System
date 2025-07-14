@@ -1,12 +1,12 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose")
 
 const taskSchema = new mongoose.Schema({
   day: { type: Number, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
-  exercise: { type: String },
   test: { type: String },
-});
+  exercise: { type: String },
+})
 
 const internshipSchema = new mongoose.Schema(
   {
@@ -18,7 +18,7 @@ const internshipSchema = new mongoose.Schema(
     dailyTasks: [taskSchema],
     image: { type: String },
   },
-  { timestamps: true }
-);
+  { timestamps: true },
+)
 
-module.exports = mongoose.model("Internship", internshipSchema);
+module.exports = mongoose.model("Internship", internshipSchema)

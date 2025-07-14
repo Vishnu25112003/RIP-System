@@ -69,7 +69,7 @@ const TasksListSection: React.FC<TasksListSectionProps> = ({ tasksData, expanded
                   {getStatusIcon(task.status)}
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900">
-                      Day {task.day} - {task.title}
+                     {task.title}
                     </h4>
                     <p className="text-gray-600 text-sm">
                       {task.status === "completed" && "✅ Completed"}
