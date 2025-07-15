@@ -6,6 +6,7 @@ import { useAuth } from "./context/authContext"
 
 // Auth components
 import Signin from "./auth/Signin"
+import OrganizationSignup from "./auth/OrganizationSignin"
 import Login from "./auth/Login"
 
 // Admin and User Apps
@@ -87,6 +88,14 @@ const AppRoutes: React.FC = () => {
         element={
           <PublicRoute>
             <Signin />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/auth/organization-signup"
+        element={
+          <PublicRoute>
+            <OrganizationSignup />
           </PublicRoute>
         }
       />

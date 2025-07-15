@@ -1,10 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
+import type React from "react"
+import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Eye, EyeOff, User, Mail, Lock, Phone } from "lucide-react"
+import { Eye, EyeOff, User, Mail, Lock, Phone, Building2 } from "lucide-react"
 
 const Signin: React.FC = () => {
+  const [registrationType, setRegistrationType] = useState<"individual" | "organization" | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     mailid: "",
@@ -74,6 +76,68 @@ const Signin: React.FC = () => {
     }
   }
 
+  // Show registration type selection first
+  if (!registrationType) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
+          <div className="text-center mb-8">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xl inline-block mb-4">
+              InternPortal
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900">Choose Registration Type</h2>
+            <p className="text-gray-600 mt-2">How would you like to register?</p>
+          </div>
+
+          <div className="space-y-4">
+            {/* Individual Registration */}
+            <button
+              onClick={() => setRegistrationType("individual")}
+              className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors">
+                  <User className="w-8 h-8 text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-semibold text-gray-900">Single User</h3>
+                  <p className="text-gray-600 text-sm">Register as an individual student</p>
+                </div>
+              </div>
+            </button>
+
+            {/* Organization Registration */}
+            <button
+              onClick={() => navigate("/auth/organization-signup")}
+              className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all group"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="bg-purple-100 p-3 rounded-lg group-hover:bg-purple-200 transition-colors">
+                  <Building2 className="w-8 h-8 text-purple-600" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-semibold text-gray-900">Organization</h3>
+                  <p className="text-gray-600 text-sm">Register multiple students at once</p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Link to login */}
+          <div className="mt-8 text-center">
+            <p className="text-gray-600">
+              Already have an account?{" "}
+              <Link to="/auth/login" className="text-blue-600 hover:text-blue-700 font-semibold">
+                Sign In
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show individual registration form
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
@@ -84,6 +148,14 @@ const Signin: React.FC = () => {
           <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
           <p className="text-gray-600 mt-2">Join our internship community</p>
         </div>
+
+        {/* Back button */}
+        <button
+          onClick={() => setRegistrationType(null)}
+          className="mb-6 text-blue-600 hover:text-blue-700 text-sm flex items-center"
+        >
+          ← Back to registration options
+        </button>
 
         {message && (
           <div

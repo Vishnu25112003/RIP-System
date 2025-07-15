@@ -39,7 +39,8 @@ const authRoutes = require("./routes/authRoutes")
 const applicationRoutes = require("./routes/applicationRoutes")
 const taskRoutes = require("./routes/taskSubmissionRoutes")
 const userActivityRoutes = require("./routes/userActivityRoutes")
-const adminDashboardRoutes = require("./routes/adminDashboardRoutes") // Make sure this line is present
+const adminDashboardRoutes = require("./routes/adminDashboardRoutes")
+const organizationRoutes = require("./routes/organizationSigninRoutes") // New organization routes
 
 // Register routes
 app.use("/api/userverification", userVerificationRoutes)
@@ -48,7 +49,8 @@ app.use("/api/auth", authRoutes)
 app.use("/api/applications", applicationRoutes)
 app.use("/api/tasks", taskRoutes)
 app.use("/api/admin", userActivityRoutes)
-app.use("/api/admin/dashboard", adminDashboardRoutes) // Make sure this line is present and correct
+app.use("/api/admin/dashboard", adminDashboardRoutes)
+app.use("/api/organization", organizationRoutes) // New organization routes
 
 // Health check/test route
 app.get("/", (req, res) => {
