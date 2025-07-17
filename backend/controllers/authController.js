@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs")
 
 // Generate JWT Token
 const generateToken = (userId, role) => {
-  return jwt.sign({ userId, role }, process.env.JWT_SECRET, { expiresIn: "7d" })
+  return jwt.sign({ userId, role }, process.env.JWT_SECRET, { expiresIn: "30d" })
 }
 
 // Login user

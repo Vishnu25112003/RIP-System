@@ -358,7 +358,6 @@ const OrganizationSignup: React.FC = () => {
                 </div>
               )}
 
-              {formData.preferredMode === "student" && (
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Number of Students *</label>
                   <input
@@ -371,7 +370,6 @@ const OrganizationSignup: React.FC = () => {
                     className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-              )}
             </div>
           </div>
 
@@ -382,7 +380,6 @@ const OrganizationSignup: React.FC = () => {
                 <Users className="mr-2" size={24} />
                 Student Details ({students.length} students)
               </h3>
-              {formData.preferredMode === "student" && (
                 <button
                   type="button"
                   onClick={addStudent}
@@ -391,7 +388,6 @@ const OrganizationSignup: React.FC = () => {
                   <Plus size={16} className="mr-2" />
                   Add Student
                 </button>
-              )}
             </div>
 
             <div className="space-y-4">
